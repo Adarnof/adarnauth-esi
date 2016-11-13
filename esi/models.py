@@ -51,33 +51,48 @@ class Token(models.Model):
     objects = TokenManager()
 
     def __str__(self):
-        return "%s - %s" % (self.character_name, ", ".join([s.name for s in self.scopes.all()]))
+        return "%s - %s" % (self.character_name, ", ".join(sorted(s.name for s in self.scopes.all())))
+
+    def __repr__(self):
+        return "<{}(id={}): {}, {}>".format(
+            self.__class__.__name__,
+            self.pk,
+            self.character_id,
+            self.character_name,
+            )
 
     @property
     def can_refresh(self):
         """
         Determines if this token can be refreshed upon expiry
         """
-        if self.refresh_token:
-            return True
-        else:
-            return False
+        return bool(self.refresh_token)
+
+    @property
+    def expires(self):
+        """
+        Determines when the token expires.
+        """
+        return self.created + datetime.timedelta(seconds=app_settings.ESI_TOKEN_VALID_DURATION)
 
     @property
     def expired(self):
         """
         Determines if the access token has expired.
         """
-        if self.created + datetime.timedelta(seconds=app_settings.ESI_TOKEN_VALID_DURATION) > timezone.now():
-            return False
-        else:
-            return True
+        return self.expires > timezone.now()
 
-    def refresh(self):
+    def refresh(self, session=None):
+        """
+        Refreshes the token.
+        :param session: :class:`requests_oauthlib.OAuth2Session` for refreshing token with.
+        """
         if self.can_refresh:
-            oauth = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, client_secret=app_settings.ESI_SSO_CLIENT_SECRET)
+            if not session:
+                session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID,
+                                        client_secret=app_settings.ESI_SSO_CLIENT_SECRET)
             try:
-                self.token = oauth.refresh_token(app_settings.ESI_TOKEN_REFRESH_URL, self.refresh_token)
+                self.token = session.refresh_token(app_settings.ESI_TOKEN_URL, self.refresh_token)
                 self.created = timezone.now()
                 self.save()
             except requests.HTTPError:
@@ -86,6 +101,10 @@ class Token(models.Model):
             raise NotRefreshableTokenError()
 
     def get_esi_client(self):
+        """
+        Creates an authenticated ESI client with this token.
+        :return: `bravado.client.SwaggerClient`
+        """
         return esi_client_factory(token=self)
 
 
@@ -105,3 +124,6 @@ class CallbackRedirect(models.Model):
 
     def __str__(self):
         return "%s: %s" % (self.session_key, self.url)
+
+    def __repr__(self):
+        return "<{}(id={}): {} to {}>".format(self.__class__.__name__, self.pk, self.session_key, self.url)

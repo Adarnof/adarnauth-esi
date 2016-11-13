@@ -31,7 +31,7 @@ def sso_redirect(request, scopes=list([]), return_to=None):
         url = request.get_full_path()
 
     oauth = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, redirect_uri=app_settings.ESI_SSO_CALLBACK_URL, scope=scopes)
-    redirect_url, state = oauth.authorization_url(app_settings.ESI_SSO_LOGIN_URL)
+    redirect_url, state = oauth.authorization_url(app_settings.ESI_OAUTH_LOGIN_URL)
 
     CallbackRedirect.objects.create(session_key=request.session.session_key, state=state, url=url)
 
