@@ -25,7 +25,11 @@ class TokenManager(models.Manager):
         if 'Scopes' in token:
             from esi.models import Scope
             for s in token['Scopes'].split():
-                scope = Scope.objects.get_or_create(name=s)[0]
-                model.scopes.add(scope)
+                try:
+                    scope = Scope.objects.get(name=s)
+                    model.scopes.add(scope)
+                except Scope.DoesNotExist:
+                    # unrecognized scope received. ignoring
+                    pass
 
         return model
