@@ -59,7 +59,7 @@ class Token(models.Model):
             self.pk,
             self.character_id,
             self.character_name,
-            )
+        )
 
     @property
     def can_refresh(self):
@@ -80,19 +80,23 @@ class Token(models.Model):
         """
         Determines if the access token has expired.
         """
-        return self.expires > timezone.now()
+        return self.expires < timezone.now()
 
-    def refresh(self, session=None):
+    def refresh(self, session=None, auth=None):
         """
         Refreshes the token.
         :param session: :class:`requests_oauthlib.OAuth2Session` for refreshing token with.
+        :param auth: :class:`requests.auth.HTTPBasicAuth`
         """
         if self.can_refresh:
             if not session:
-                session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID,
-                                        client_secret=app_settings.ESI_SSO_CLIENT_SECRET)
+                session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID)
+            if not auth:
+                auth = requests.auth.HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
             try:
-                self.token = session.refresh_token(app_settings.ESI_TOKEN_URL, self.refresh_token)
+                self.access_token = \
+                    session.refresh_token(app_settings.ESI_TOKEN_URL, refresh_token=self.refresh_token, auth=auth)[
+                        'access_token']
                 self.created = timezone.now()
                 self.save()
             except requests.HTTPError:
@@ -103,7 +107,7 @@ class Token(models.Model):
     def get_esi_client(self):
         """
         Creates an authenticated ESI client with this token.
-        :return: `bravado.client.SwaggerClient`
+        :return: :class:`bravado.client.SwaggerClient`
         """
         return esi_client_factory(token=self)
 

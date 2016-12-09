@@ -3,6 +3,7 @@ from celery.task import periodic_task
 from django.utils import timezone
 from datetime import timedelta
 from requests_oauthlib import OAuth2Session
+import requests
 from esi.models import CallbackRedirect, Token
 from esi.errors import TokenError
 from esi import app_settings
@@ -23,13 +24,13 @@ def cleanup_token():
     """
     Delete expired :model:`esi.Token` models.
     """
-    session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, client_secret=app_settings.ESI_SSO_CLIENT_SECRET)
-    for model in Token.objects.all():
-        if model.expired:
-            if model.can_refresh:
-                try:
-                    model.refresh(session=session)
-                except TokenError:
-                    model.delete()
-            else:
-                model.delete()
+    session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID)
+    auth = requests.auth.HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
+    max_age = timezone.now() - timedelta(seconds=app_settings.ESI_TOKEN_VALID_DURATION)
+    tokens = Token.objects.filter(created__lte=max_age)
+    for model in tokens.filter(refresh_token__isnull=False):
+        try:
+            model.refresh(session=session, auth=auth)
+        except TokenError:
+            model.delete()
+    tokens.filter(refresh_token__isnull=True).delete()

@@ -22,9 +22,9 @@ class TokenManager(models.Manager):
             user=request.user if request.user.is_authenticated else None
         )
 
-        if 'Scopes' in token:
+        if 'Scopes' in token_data:
             from esi.models import Scope
-            for s in token['Scopes'].split():
+            for s in token_data['Scopes'].split():
                 try:
                     scope = Scope.objects.get(name=s)
                     model.scopes.add(scope)

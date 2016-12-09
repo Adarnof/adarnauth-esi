@@ -3,6 +3,10 @@ from bravado.client import SwaggerClient
 from bravado.requests_client import RequestsClient, Authenticator
 from esi import app_settings
 from esi.errors import TokenExpiredError
+try:
+    import urlparse
+except ImportError: #py3
+    from urllib import parse as urlparse
 
 
 class TokenAuthenticator(Authenticator):
@@ -13,6 +17,7 @@ class TokenAuthenticator(Authenticator):
     def __init__(self, token=None, datasource=None):
         self.token = token
         self.datasource = datasource
+        self.host = urlparse.urlsplit(app_settings.ESI_API_URL).hostname
 
     def apply(self, request):
         if self.token and self.token.expired:
