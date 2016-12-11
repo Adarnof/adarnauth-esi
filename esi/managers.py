@@ -2,9 +2,56 @@ from __future__ import unicode_literals
 from django.db import models
 from requests_oauthlib import OAuth2Session
 from esi import app_settings
+import requests
+from django.utils import timezone
+from datetime import timedelta
+from esi.errors import TokenError
+
+
+class TokenQueryset(models.QuerySet):
+    def get_expired(self):
+        """
+        Get all tokens which have expired.
+        :return: All expired tokens.
+        :rtype: :class:`esi.managers.TokenQueryset`
+        """
+        max_age = timezone.now() - timedelta(seconds=app_settings.ESI_TOKEN_VALID_DURATION)
+        return self.filter(created__lte=max_age)
+
+    def bulk_refresh(self):
+        """
+        Refreshes all refreshable tokens in the queryset.
+        Deletes any tokens which fail to refresh.
+        Deletes any tokens which are expired and cannot refresh.
+        """
+        session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID)
+        auth = requests.auth.HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
+        for model in self.filter(refresh_token__isnull=False):
+            try:
+                model.refresh(session=session, auth=auth)
+            except TokenError:
+                model.delete()
+        self.filter(refresh_token__isnull=True).get_expired().delete()
+
+    def require_valid(self):
+        """
+        Ensures all tokens are still valid. If expired, attempts to refresh.
+        Deletes those which fail to refresh or cannot be refreshed.
+        :return: All tokens which are still valid.
+        :rtype: :class:`esi.managers.TokenQueryset`
+        """
+        self.get_expired().bulk_refresh()
+        return self.filter(pk__isnull=False)
 
 
 class TokenManager(models.Manager):
+    def get_queryset(self):
+        """
+        Replace base queryset model with custom TokenQueryset
+        :rtype: :class:`esi.managers.TokenQueryset`
+        """
+        return TokenQueryset(self.model, using=self._db)
+
     def create_from_request(self, request):
         oauth = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, redirect_uri=app_settings.ESI_SSO_CALLBACK_URL)
         token = oauth.fetch_token(app_settings.ESI_TOKEN_URL, client_secret=app_settings.ESI_SSO_CLIENT_SECRET,

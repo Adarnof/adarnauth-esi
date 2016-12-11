@@ -20,6 +20,10 @@ class Scope(models.Model):
     name = models.CharField(max_length=100, unique=True, help_text="The official EVE name for the scope.")
     help_text = models.TextField(help_text="The official EVE description of the scope.")
 
+    @property
+    def friendly_name(self):
+        return self.name.split('.')[1]
+
     def __str__(self):
         return self.name
 

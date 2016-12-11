@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
 
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404, render
 from django.utils.six import string_types
 from django.core.urlresolvers import reverse
 from esi.models import CallbackRedirect, Token
 from esi import app_settings
+from esi.decorators import tokens_required
 from django.http.response import HttpResponseBadRequest
 from requests_oauthlib import OAuth2Session
 
@@ -56,3 +57,19 @@ def receive_callback(request):
     callback.token = token
     callback.save()
     return redirect(callback.url)
+
+
+def select_token(request, scopes='', new=False):
+    """
+    Presents the user with a selection of applicable tokens for the requested view.
+    """
+
+    @tokens_required(scopes=scopes, new=new)
+    def _token_list(r, tokens):
+        context = {
+            'tokens': tokens,
+            'base_template': app_settings.ESI_BASE_TEMPLATE,
+        }
+        return render(r, 'esi/select_token.html', context=context)
+
+    return _token_list(request)

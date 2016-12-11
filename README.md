@@ -30,22 +30,32 @@ Set the `Callback URL` to `https://example.com/sso/callback`
 
 ## Usage in Views
 
-When views require a token, wrap with the `token_required` decorator and accept a `tokens` arg:
+When views require a token, wrap with the `token_required` decorator and accept a `token` arg:
 
     from esi.decorators import token_required
 
     @token_required()
-    def my_view(request, tokens):
+    def my_view(request, token):
         ...
+
+This will prompt the user to either select a token from their current ones, or if none exist create a new one via SSO.
 
 To specify scopes, add either a list of names or a space-delimited string:
 
-    @token_required(scopes=['read_skills', 'read_clones'])
-    @token_required(scopes='read_skills read_clones')
+    @token_required(scopes=['esi-location.read_ship_type.v1', 'esi-location.read_location.v1'])
+    @token_required(scopes='esi-location.read_ship_type.v1 esi-location.read_location.v1')
 
 To require a new token, such as for logging in, add the `new` argument:
 
     @token_required(new=True)
+
+To request all of a user's tokens which have the required scopes, wrap instead with the `tokens_required` decorator and accept a `tokens` arg:
+
+    @tokens_required(scopes='esi-location.read_ship_type.v1')
+    def my_view(request, tokens):
+        ...
+
+This skips prompting for token selection and instead passes that responsibility to the view. Tokens are provided as a queryset.
 
 ## Accessing the EVE Swagger Interface
 
