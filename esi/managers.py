@@ -5,7 +5,15 @@ from esi import app_settings
 import requests
 from django.utils import timezone
 from datetime import timedelta
+from django.utils.six import string_types
 from esi.errors import TokenError
+
+
+def _process_scopes(scopes):
+    # support space-delimited string scopes or lists
+    if isinstance(scopes, string_types):
+        scopes = scopes.split()
+    return scopes
 
 
 class TokenQueryset(models.QuerySet):
@@ -42,6 +50,18 @@ class TokenQueryset(models.QuerySet):
         """
         self.get_expired().bulk_refresh()
         return self.filter(pk__isnull=False)
+
+    def require_scopes(self, scope_string):
+        """
+        :param scope_string: The required scopes.
+        :type scope_string: Union[str, list]
+        :return: The tokens with all requested scopes.
+        :rtype: :class:`esi.managers.TokenQueryset`
+        """
+        scopes = _process_scopes(scope_string)
+        for s in scopes:
+            self = self.filter(scopes__name=str(s))
+        return self
 
 
 class TokenManager(models.Manager):

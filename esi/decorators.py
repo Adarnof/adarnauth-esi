@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 from functools import wraps
 from django.utils.decorators import available_attrs
-from django.utils.six import string_types
 from esi.models import Token, CallbackRedirect
 
 
@@ -20,13 +19,6 @@ def _check_callback(request):
         return None
 
 
-def _process_scopes(scopes):
-    # support space-delimited string scopes or lists
-    if isinstance(scopes, string_types):
-        scopes = scopes.split()
-    return scopes
-
-
 def tokens_required(scopes='', new=False):
     """
     Decorator for views to request an ESI Token.
@@ -35,8 +27,6 @@ def tokens_required(scopes='', new=False):
     Can require a new token to be retrieved by SSO.
     Returns a QueryDict of Tokens.
     """
-
-    scopes = _process_scopes(scopes)
 
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
@@ -55,7 +45,7 @@ def tokens_required(scopes='', new=False):
                     return redirect_to_login(request.get_full_path())
 
                 # collect tokens in db, check if still valid, return if any
-                tokens = Token.objects.filter(user__pk=request.user.pk).filter(scopes__name__in=scopes).bulk_refresh()
+                tokens = Token.objects.filter(user__pk=request.user.pk).require_scopes(scopes).require_valid()
                 if tokens.exists():
                     return view_func(request, tokens, *args, **kwargs)
 
@@ -73,8 +63,6 @@ def token_required(scopes='', new=False):
     Decorator for views which supplies a single, user-selected token for the view to process.
     Same parameters as tokens_required.
     """
-
-    scopes = _process_scopes(scopes)
 
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
@@ -98,14 +86,13 @@ def token_required(scopes='', new=False):
                         token = Token.objects.get(pk=token_pk)
                         # ensure token belongs to this user and has required scopes
                         if ((token.user and token.user == request.user) or not token.user) and Token.objects.filter(
-                                scopes__name__in=scopes).filter(pk=token_pk).require_valid().exists():
+                                pk=token_pk).require_scopes(scopes).require_valid().exists():
                             return view_func(request, token, *args, **kwargs)
                     except Token.DoesNotExist:
                         pass
 
             # present the user with token choices
-            tokens = Token.objects.filter(user__pk=request.user.pk).filter(scopes__name__in=scopes)
-            tokens.get_expired().bulk_refresh()
+            tokens = Token.objects.filter(user__pk=request.user.pk).require_scopes(scopes).require_valid()
             if tokens.exists():
                 from esi.views import select_token
                 return select_token(request, scopes=scopes, new=new)
