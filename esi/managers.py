@@ -96,7 +96,13 @@ class TokenManager(models.Manager):
                     scope = Scope.objects.get(name=s)
                     model.scopes.add(scope)
                 except Scope.DoesNotExist:
-                    # unrecognized scope received. ignoring
-                    pass
+                    # This scope isn't included in a data migration. Create a placeholder until it updates.
+                    try:
+                        help_text = s.split('.')[1].replace('_', ' ').capitalize()
+                    except IndexError:
+                        # Unusual scope name, missing periods.
+                        help_text = s.replace('_', ' ').capitalize()
+                    scope = Scope.objects.create(name=s, help_text=help_text)
+                    model.scopes.add(scope)
 
         return model
