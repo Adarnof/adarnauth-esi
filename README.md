@@ -5,25 +5,24 @@ Django app for accessing the EVE Swagger Interface.
 
 1. Add `esi` to your `INSTALLED_APPS` setting:
 
-`INSTALLED_APPS += 'esi'`
+   `INSTALLED_APPS += 'esi'`
 
 2. Include the esi urlconf in your project's urls:
 
-`url(r'^sso/', include('esi.urls'), namespace='esi'),`
+    `url(r'^sso/', include('esi.urls'), namespace='esi'),`
 
 3. Register an application with the [EVE Developers site](https://developers.eveonline.com/applications)
 
-If your application requires scopes, select `CREST Access` and register all possible scopes your app can request. Otherwise `Authentication Only` will suffice.
-Set the `Callback URL` to `https://example.com/sso/callback`
+    If your application requires scopes, select `CREST Access` and register all possible scopes your app can request. Otherwise `Authentication Only` will suffice.
+    Set the `Callback URL` to `https://example.com/sso/callback`
 
 4. Add SSO client settings to your project settings:
 
-
-`ESI_SSO_CLIENT_ID = "my client id"`
-
-`ESI_SSO_CLIENT_SECRET = "my client secret"`    
-
-`ESI_SSO_CALLBACK_URL = "https://example.com/sso/callback"`
+    `ESI_SSO_CLIENT_ID = "my client id"`
+    
+    `ESI_SSO_CLIENT_SECRET = "my client secret"`
+    
+    `ESI_SSO_CALLBACK_URL = "https://example.com/sso/callback"`
     
 
 5. Run `python manage.py migrate` to create models.
