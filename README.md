@@ -13,7 +13,7 @@ Django app for accessing the EVE Swagger Interface.
 
 3. Register an application with the [EVE Developers site](https://developers.eveonline.com/applications)
 
-    If your application requires scopes, select `CREST Access` and register all possible scopes your app can request. Otherwise `Authentication Only` will suffice.
+    If your application requires scopes, select `Authenticated API Access` and register all possible scopes your app can request. Otherwise `Authentication Only` will suffice.
     Set the `Callback URL` to `https://example.com/sso/callback`
 
 4. Add SSO client settings to your project settings:
