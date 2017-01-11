@@ -37,9 +37,9 @@ class Token(models.Model):
     """
 
     created = models.DateTimeField(auto_now_add=True)
-    access_token = models.CharField(max_length=254, unique=True, help_text="The access token granted by SSO.")
+    access_token = models.CharField(max_length=254, unique=True, help_text="The access token granted by SSO.", editable=False)
     refresh_token = models.CharField(max_length=254, blank=True, null=True,
-                                     help_text="A re-usable token to generate new access tokens upon expiry.")
+                                     help_text="A re-usable token to generate new access tokens upon expiry.", editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                              help_text="The user to whom this token belongs.")
     character_id = models.IntegerField(help_text="The ID of the EVE character who authenticated by SSO.")
