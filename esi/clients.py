@@ -5,7 +5,7 @@ from esi import app_settings
 from esi.errors import TokenExpiredError
 try:
     import urlparse
-except ImportError: #py3
+except ImportError:  # py3
     from urllib import parse as urlparse
 
 
@@ -30,11 +30,12 @@ class TokenAuthenticator(Authenticator):
         return request
 
 
-def esi_client_factory(token=None, datasource=None):
+def esi_client_factory(token=None, datasource=None, version=app_settings.ESI_API_VERSION):
     """
     Generates an ESI client.
     :param token: :class:`esi.Token` used to access authenticated endpoints.
     :param datasource: Name of the ESI datasource to access.
+    :param version: ESI API version. Accepted values are 'legacy', 'latest', 'dev', or 'vX' where X is a numeric version
     :return: :class:`bravado.client.SwaggerClient`
     """
     if token or datasource:
@@ -42,4 +43,6 @@ def esi_client_factory(token=None, datasource=None):
         requests_client.authenticator = TokenAuthenticator(token=token, datasource=datasource)
     else:
         requests_client = None
-    return SwaggerClient.from_url(app_settings.ESI_SWAGGER_URL, http_client=requests_client)
+
+    url = urlparse.urljoin(app_settings.ESI_API_URL, version + '/swagger.json')
+    return SwaggerClient.from_url(url, http_client=requests_client)

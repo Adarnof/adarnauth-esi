@@ -18,7 +18,6 @@ ESI_BASE_TEMPLATE = getattr(settings, 'ESI_BASE_TEMPLATE', 'public/base.html')
 
 # These probably won't ever change. Override if needed.
 ESI_API_URL = getattr(settings, 'ESI_API_URL', 'https://esi.tech.ccp.is/')
-ESI_SWAGGER_URL = getattr(settings, 'ESI_SWAGGER_URL', ESI_API_URL + ESI_API_VERSION + '/swagger.json')
 ESI_OAUTH_LOGIN_URL = getattr(settings, 'ESI_SSO_LOGIN_URL', ESI_OAUTH_URL + "/authorize/")
 ESI_TOKEN_URL = getattr(settings, 'ESI_CODE_EXCHANGE_URL', ESI_OAUTH_URL + "/token")
 ESI_TOKEN_VERIFY_URL = getattr(settings, 'ESI_TOKEN_EXCHANGE_URL', ESI_OAUTH_URL + "/verify")
