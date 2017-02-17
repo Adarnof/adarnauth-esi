@@ -30,7 +30,7 @@ class TokenAuthenticator(Authenticator):
         return request
 
 
-def esi_client_factory(token=None, datasource=None, version=app_settings.ESI_API_VERSION):
+def esi_client_factory(token=None, datasource=None, version=None):
     """
     Generates an ESI client.
     :param token: :class:`esi.Token` used to access authenticated endpoints.
@@ -44,5 +44,6 @@ def esi_client_factory(token=None, datasource=None, version=app_settings.ESI_API
     else:
         requests_client = None
 
-    url = urlparse.urljoin(app_settings.ESI_API_URL, version + '/swagger.json')
+    api_version = version or app_settings.ESI_API_VERSION
+    url = urlparse.urljoin(app_settings.ESI_API_URL, api_version + '/swagger.json')
     return SwaggerClient.from_url(url, http_client=requests_client)
