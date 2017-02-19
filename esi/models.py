@@ -108,13 +108,13 @@ class Token(models.Model):
         else:
             raise NotRefreshableTokenError()
 
-    def get_esi_client(self, version=None):
+    def get_esi_client(self, version=None, **kwargs):
         """
         Creates an authenticated ESI client with this token.
         :param version: ESI API version
         :return: :class:`bravado.client.SwaggerClient`
         """
-        return esi_client_factory(token=self, version=version)
+        return esi_client_factory(token=self, version=version, **kwargs)
 
 
 @python_2_unicode_compatible

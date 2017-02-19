@@ -79,14 +79,23 @@ Or, get the client from the specific token model instead:
 
 Authenticated clients will auto-renew tokens when needed, or raise a `TokenExpiredError` if they aren't renewable.
 
-### Accessing Endpoint Versions
+### Accessing API Versions
 
 To get a SwaggerClient to access specific versions of resources, pass a `version` argument. Versions must be one of `legacy`, `latest`, `dev`, or a specific version number such as `v4`.
 
     client = esi_client_factory(version='v4')
     client = token.get_esi_client(version='v4')
 
-Only resources with the specified version number will be available. For instance, if you access `v4` but `Universe` doesn't have a `v4` version, it will not be available to that specific client.
+Only resources with the specified version number will be available. For instance, if you access `v4` but `Universe` doesn't have a `v4` version, it will not be available to that specific client. It's best to only use `legacy`, `latest`, or `dev` for this.
+
+### Accessing Resource Versions
+
+Individual resources are versioned and can be accessed by passing additional arguments to the factory:
+
+    client = esi_client_factory(Universe='v1', Character='v3')
+    client = token.get_esi_client(Universe='v1', Character='v3')
+
+Versions not available for the given resource will raise an `AttributeError`. Any resources without an explicit versions will be provided at the `version` revision (see above notes, default is `ESI_API_VERSION`). 
 
 Learn more about alt routes from the [EVE Developers Blog](https://developers.eveonline.com/blog/article/breaking-changes-and-you)
 
