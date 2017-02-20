@@ -79,25 +79,27 @@ Or, get the client from the specific token model instead:
 
 Authenticated clients will auto-renew tokens when needed, or raise a `TokenExpiredError` if they aren't renewable.
 
-### Accessing API Versions
+### Specifying Resource Versions
 
-To get a SwaggerClient to access specific versions of resources, pass a `version` argument. Versions must be one of `legacy`, `latest`, `dev`, or a specific version number such as `v4`.
+As explained on the [EVE Developers Blog](https://developers.eveonline.com/blog/article/breaking-changes-and-you), it's best practice to call a specific version of the resource and allow the ESI router to map it to the correct route, being `legacy`, `latest` or `dev`. 
+
+Client initialization begins with a base swagger spec. By default this is the version defined in settings (`ESI_API_VERSION`), but can be overridden with an extra argument to the factory:
 
     client = esi_client_factory(version='v4')
     client = token.get_esi_client(version='v4')
 
-Only resources with the specified version number will be available. For instance, if you access `v4` but `Universe` doesn't have a `v4` version, it will not be available to that specific client. It's best to only use `legacy`, `latest`, or `dev` for this.
-
-### Accessing Resource Versions
+Only resources with the specified version number will be available. For instance, if you specify `v4` but `Universe` does not have a `v4` version, it will not be available to that specific client. Only `legacy`, `latest` and `dev` are guaranteed to have all resources available.
 
 Individual resources are versioned and can be accessed by passing additional arguments to the factory:
 
     client = esi_client_factory(Universe='v1', Character='v3')
     client = token.get_esi_client(Universe='v1', Character='v3')
 
-Versions not available for the given resource will raise an `AttributeError`. Any resources without an explicit versions will be provided at the `version` revision (see above notes, default is `ESI_API_VERSION`). 
+A list of available resources is available on the [EVE Swagger Interface browser](https://esi.tech.ccp.is). If the resource is not available with the specified version, an `AttributeError` will be raised. 
 
-Learn more about alt routes from the [EVE Developers Blog](https://developers.eveonline.com/blog/article/breaking-changes-and-you)
+This version of the resource replaces the resource originally initialized. If the requested base version does not have the specified resource, it will be added.
+
+Note that only one old revision of each resource is kept available through the legacy route. Keep an eye on the [deployment timeline](https://github.com/ccpgames/esi-issues/projects/2/) for resource updates. 
 
 ### Accessing Alternate Datasources
  
