@@ -3,13 +3,15 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.db import models
 from esi import app_settings
 from django.conf import settings
-import requests
+from requests.auth import HTTPBasicAuth
 from django.utils import timezone
 from esi.clients import esi_client_factory
 import datetime
 from requests_oauthlib import OAuth2Session
 from esi.managers import TokenManager
 from esi.errors import TokenInvalidError, NotRefreshableTokenError
+from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, MissingTokenError, InvalidClientError
+from django.core.exceptions import ImproperlyConfigured
 
 
 @python_2_unicode_compatible
@@ -37,9 +39,11 @@ class Token(models.Model):
     """
 
     created = models.DateTimeField(auto_now_add=True)
-    access_token = models.CharField(max_length=254, unique=True, help_text="The access token granted by SSO.", editable=False)
+    access_token = models.CharField(max_length=254, unique=True, help_text="The access token granted by SSO.",
+                                    editable=False)
     refresh_token = models.CharField(max_length=254, blank=True, null=True,
-                                     help_text="A re-usable token to generate new access tokens upon expiry.", editable=False)
+                                     help_text="A re-usable token to generate new access tokens upon expiry.",
+                                     editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                              help_text="The user to whom this token belongs.")
     character_id = models.IntegerField(help_text="The ID of the EVE character who authenticated by SSO.")
@@ -96,15 +100,17 @@ class Token(models.Model):
             if not session:
                 session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID)
             if not auth:
-                auth = requests.auth.HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
+                auth = HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
             try:
                 self.access_token = \
                     session.refresh_token(app_settings.ESI_TOKEN_URL, refresh_token=self.refresh_token, auth=auth)[
                         'access_token']
                 self.created = timezone.now()
                 self.save()
-            except requests.HTTPError:
+            except (InvalidGrantError, MissingTokenError):
                 raise TokenInvalidError()
+            except InvalidClientError:
+                raise ImproperlyConfigured('Verify ESI_SSO_CLIENT_ID and ESI_SSO_CLIENT_SECRET settings.')
         else:
             raise NotRefreshableTokenError()
 
