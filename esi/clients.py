@@ -71,13 +71,13 @@ def get_spec(name, http_client=None, config=None):
     :param config: Spec configuration - see Spec.CONFIG_DEFAULTS
     :return: :class:`bravado_core.spec.Spec`
     """
-    if not http_client:
-        http_client = RequestsClient()
-    spec_dict = cache.get(build_cache_name(name))
-    if not spec_dict:
-        loader = Loader(http_client)
-        spec_dict = loader.load_spec(build_spec_url(name))
-        cache_spec(name, spec_dict)
+
+    def load_spec():
+        loader_http_client = http_client or RequestsClient()
+        loader = Loader(loader_http_client)
+        return loader.load_spec(build_spec_url(name))
+
+    spec_dict = cache.get_or_set(build_cache_name(name), load_spec, app_settings.ESI_SPEC_CACHE_DURATION)
     config = dict(CONFIG_DEFAULTS, **(config or {}))
     return Spec.from_dict(spec_dict, build_spec_url(name), http_client, config)
 
