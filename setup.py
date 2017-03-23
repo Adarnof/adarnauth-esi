@@ -8,7 +8,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='adarnauth-esi',
-    version='1.2.2',
+    version='1.3',
     install_requires=[
         'requests>=2.9.1',
         'requests_oauthlib',

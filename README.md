@@ -120,4 +120,4 @@ If you have celerybeat running, two tasks are automatically scheduled:
   - `ESI_OAUTH_URL` should be set to `https://sisilogin.testeveonline.com/oauth`
   - `ESI_API_DATASOURCE` should be set to `singularity`
   
-  Note that tokens cannot be transferred between servers. Any tokens in the database befure switching to singularity will be deleted next refresh.
+  Note that tokens cannot be transferred between servers. Any tokens in the database before switching to singularity will be deleted next refresh.

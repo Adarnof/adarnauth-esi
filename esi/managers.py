@@ -72,13 +72,21 @@ class TokenManager(models.Manager):
         """
         return TokenQueryset(self.model, using=self._db)
 
-    def create_from_request(self, request):
+    def create_from_code(self, code, user=None):
+        """
+        Perform OAuth code exchange to retrieve a token.
+        :param code: OAuth grant code.
+        :param user: User who will own token.
+        :return: :class:`esi.models.Token`
+        """
+
+        # perform code exchange
         oauth = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, redirect_uri=app_settings.ESI_SSO_CALLBACK_URL)
         token = oauth.fetch_token(app_settings.ESI_TOKEN_URL, client_secret=app_settings.ESI_SSO_CLIENT_SECRET,
-                                  code=request.GET.get('code'))
-
+                                  code=code)
         token_data = oauth.request('get', app_settings.ESI_TOKEN_VERIFY_URL).json()
 
+        # translate returned data to a model
         model = self.create(
             character_id=token_data['CharacterID'],
             character_name=token_data['CharacterName'],
@@ -86,9 +94,10 @@ class TokenManager(models.Manager):
             access_token=token['access_token'],
             refresh_token=token['refresh_token'],
             token_type=token_data['TokenType'],
-            user=request.user if request.user.is_authenticated else None
+            user=user,
         )
 
+        # parse scopes
         if 'Scopes' in token_data:
             from esi.models import Scope
             for s in token_data['Scopes'].split():
@@ -105,4 +114,15 @@ class TokenManager(models.Manager):
                     scope = Scope.objects.create(name=s, help_text=help_text)
                     model.scopes.add(scope)
 
+        return model
+
+    def create_from_request(self, request):
+        """
+        Generate a token from the OAuth callback request. Must contain 'code' in GET.
+        :param request: OAuth callback request.
+        :return: :class:`esi.models.Token`
+        """
+        code = request.GET.get('code')
+        # attach a user during creation for some functionality in a post_save created receiver I'm working on elsewhere
+        model = self.create_from_code(code, user=request.user if request.user.is_authenticated else None)
         return model
