@@ -148,8 +148,9 @@ class TokenManager(models.Manager):
                     refresh_token=model.refresh_token,
                     created=model.created,
                 )
-                model.delete()
-                model = queryset.filter(user=model.user)[0]  # pick one at random
+                if queryset.filter(user=model.user).exists():
+                    model.delete()
+                    model = queryset.filter(user=model.user)[0]  # pick one at random
 
         return model
 
