@@ -7,9 +7,13 @@ from django.utils import timezone
 from datetime import timedelta
 from django.utils.six import string_types
 from esi.errors import TokenError
+from esi.app_settings import ESI_ALWAYS_CREATE_TOKEN
 
 
 def _process_scopes(scopes):
+    if scopes is None:
+        # support filtering by no scopes with None passed
+        return ''
     # support space-delimited string scopes or lists
     if isinstance(scopes, string_types):
         scopes = scopes.split()
@@ -63,6 +67,26 @@ class TokenQueryset(models.QuerySet):
             self = self.filter(scopes__name=str(s))
         return self
 
+    def require_scopes_exact(self, scope_string):
+        """
+        :param scope_string: The required scopes.
+        :type scope_string: Union[str, list]
+        :return: The tokens with only the requested scopes.
+        :rtype: :class:`esi.managers.TokenQueryset`
+        """
+        num_scopes = len(_process_scopes(scope_string))
+        return self.annotate(models.Count('scopes')).require_scopes(scope_string).filter(
+            scopes__count=num_scopes)
+
+    def equivalent_to(self, token):
+        """
+        Gets all tokens which match the character and scopes of a reference token
+        :param token: :class:`esi.models.Token`
+        :return: :class:`esi.managers.TokenQueryset`
+        """
+        return self.filter(character_id=token.character_id).require_scopes_exact(token.scopes.all()).filter(
+            models.Q(user=token.user) | models.Q(user__isnull=True)).exclude(pk=token.pk)
+
 
 class TokenManager(models.Manager):
     def get_queryset(self):
@@ -114,6 +138,19 @@ class TokenManager(models.Manager):
                     scope = Scope.objects.create(name=s, help_text=help_text)
                     model.scopes.add(scope)
 
+        if not ESI_ALWAYS_CREATE_TOKEN:
+            # see if we already have a token for this character and scope combination
+            # if so, we don't need a new one
+            queryset = self.get_queryset().equivalent_to(model)
+            if queryset.exists():
+                queryset.update(
+                    access_token=model.access_token,
+                    refresh_token=model.refresh_token,
+                    created=model.created,
+                )
+                model.delete()
+                model = queryset.filter(user=model.user)[0]  # pick one at random
+
         return model
 
     def create_from_request(self, request):
@@ -126,3 +163,4 @@ class TokenManager(models.Manager):
         # attach a user during creation for some functionality in a post_save created receiver I'm working on elsewhere
         model = self.create_from_code(code, user=request.user if request.user.is_authenticated else None)
         return model
+

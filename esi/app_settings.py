@@ -16,6 +16,9 @@ ESI_API_VERSION = getattr(settings, 'ESI_API_VERSION', 'latest')
 # Define the base template to extend
 ESI_BASE_TEMPLATE = getattr(settings, 'ESI_BASE_TEMPLATE', 'public/base.html')
 
+# Enable to force new token creation every callback
+ESI_ALWAYS_CREATE_TOKEN = getattr(settings, 'ESI_ALWAYS_CREATE_TOKEN', False)
+
 # These probably won't ever change. Override if needed.
 ESI_API_URL = getattr(settings, 'ESI_API_URL', 'https://esi.tech.ccp.is/')
 ESI_OAUTH_LOGIN_URL = getattr(settings, 'ESI_SSO_LOGIN_URL', ESI_OAUTH_URL + "/authorize/")
