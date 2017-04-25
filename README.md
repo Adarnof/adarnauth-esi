@@ -111,9 +111,27 @@ Available datasources are `tranquility` and `singularity`.
 
 ## Cleaning the Database
 
-If you have celerybeat running, two tasks are automatically scheduled:
- - `cleanup_callbackredirect` removes all `CallbackRedirect` models older than a specified age (in seconds). Default is 300, runs every 4 hours.
- - `cleanup_token` checks all `Token` models, and if expired, attempts to refresh. If expired and cannot refresh, or fails to refresh, the model is deleted. Runs every day.
+Two tasks are available:
+ - `cleanup_callbackredirect` removes all `CallbackRedirect` models older than a specified age (in seconds). Default is 300.
+ - `cleanup_token` checks all `Token` models, and if expired, attempts to refresh. If expired and cannot refresh, or fails to refresh, the model is deleted.
+
+To schedule these automatically with celerybeat, add them to your settings.py `CELERYBEAT_SCHEDULE` dict like so:
+
+    from celery.schedules import crontab
+    
+    CELERYBEAT_SCHEDULE = {
+        ...
+        'esi_cleanup_callbackredirect': {
+            'task': 'esi.tasks.cleanup_callbackredirect',
+            'schedule': crontab(hour='*/4'),
+        },
+        'esi_cleanup_token': {
+            'task': 'esi.tasks.cleanup_token',
+            'schedule': crontab(day_of_month='*/1'),
+        },
+    }
+
+Recommended intervals are four hours for callback redirect cleanup and daily for token cleanup (token cleanup can get quite slow with a large database, so adjust as needed). If your app does not require background token validation, it may be advantageous to not schedule the token cleanup task, instead relying on the validation check when using `@token_required` decorators or adding `.require_valid()` to the end of a query.
 
 ## Operating on Singularity
  By defalt, adarnauth-esi process all operations on the tranquility cluster. To operate on singularity instead, two settings need to be changed:

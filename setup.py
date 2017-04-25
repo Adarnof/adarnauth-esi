@@ -14,7 +14,6 @@ setup(
         'requests_oauthlib',
         'django>=1.10',
         'bravado>=8.4.0',
-        'django-celery',
     ],
     packages=find_packages(),
     include_package_data=True,
