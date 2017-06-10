@@ -7,7 +7,6 @@ from django.utils import timezone
 from datetime import timedelta
 from django.utils.six import string_types
 from esi.errors import TokenError
-from esi.app_settings import ESI_ALWAYS_CREATE_TOKEN
 
 
 def _process_scopes(scopes):
@@ -138,7 +137,7 @@ class TokenManager(models.Manager):
                     scope = Scope.objects.create(name=s, help_text=help_text)
                     model.scopes.add(scope)
 
-        if not ESI_ALWAYS_CREATE_TOKEN:
+        if not app_settings.ESI_ALWAYS_CREATE_TOKEN:
             # see if we already have a token for this character and scope combination
             # if so, we don't need a new one
             queryset = self.get_queryset().equivalent_to(model)
