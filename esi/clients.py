@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 from bravado.client import SwaggerClient, CONFIG_DEFAULTS
-from bravado.requests_client import RequestsClient, Authenticator
+from bravado import requests_client
 from bravado.swagger_model import Loader
+from bravado.http_future import HttpFuture
 from bravado_core.spec import Spec
 from esi import app_settings
 from esi.errors import TokenExpiredError
 from django.core.cache import cache
+from datetime import datetime
+from esi.app_settings import ESI_CACHE_RESPONSE
 import json
 
 try:
@@ -14,7 +17,40 @@ except ImportError:  # py3
     from urllib import parse as urlparse
 
 
-class TokenAuthenticator(Authenticator):
+def _build_cache_key(request):
+    return 'ESI.%s__%s' % (request.method, request.url)
+
+
+class CachingHttpFuture(HttpFuture):
+    def __init__(self, *args, **kwargs):
+        super(CachingHttpFuture, self).__init__(*args, **kwargs)
+        self.cache_key = _build_cache_key(self.future.request)
+
+    @staticmethod
+    def _time_to_expiry(expires):
+        expires_dt = datetime.strptime(expires, '%a, %d %b %Y %H:%M:%S %Z')
+        return expires_dt - datetime.utcnow()
+
+    def result(self, **kwargs):
+        if ESI_CACHE_RESPONSE and self.future.request.method == 'GET':
+            cached_result = cache.get(self.cache_key)
+            if not cached_result:
+                _also_return_response = self.also_return_response  # preserve original value
+                self.also_return_response = True  # override to always get the raw response for expiry header
+                cached_result, response = super(CachingHttpFuture, self).result(**kwargs)
+                self.also_return_response = _also_return_response  # restore original value
+                expires = self._time_to_expiry(response.headers['Expires'])
+                if expires.seconds > 0:
+                    cache.set(self.cache_key, cached_result, expires.seconds)
+            return cached_result
+        else:
+            return super(CachingHttpFuture, self).result(**kwargs)
+
+
+requests_client.HttpFuture = CachingHttpFuture
+
+
+class TokenAuthenticator(requests_client.Authenticator):
     """
     Adds the authorization header containing access token, if specified.
     Sets ESI datasource to tranquility or singularity.
@@ -72,7 +108,7 @@ def get_spec(name, http_client=None, config=None):
     :param config: Spec configuration - see Spec.CONFIG_DEFAULTS
     :return: :class:`bravado_core.spec.Spec`
     """
-    http_client = http_client or RequestsClient()
+    http_client = http_client or requests_client.RequestsClient()
 
     def load_spec():
         loader = Loader(http_client)
@@ -131,14 +167,14 @@ def esi_client_factory(token=None, datasource=None, spec_file=None, version=None
     are ignored in favour of the versions available in the spec_file.
     """
 
-    requests_client = RequestsClient()
+    client = requests_client.RequestsClient()
     if token or datasource:
-        requests_client.authenticator = TokenAuthenticator(token=token, datasource=datasource)
+        client.authenticator = TokenAuthenticator(token=token, datasource=datasource)
 
     api_version = version or app_settings.ESI_API_VERSION
 
     if spec_file:
-        return read_spec(spec_file, http_client=requests_client)
+        return read_spec(spec_file, http_client=client)
     else:
-        spec = build_spec(api_version, http_client=requests_client, **kwargs)
+        spec = build_spec(api_version, http_client=client, **kwargs)
         return SwaggerClient(spec)
