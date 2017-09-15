@@ -99,7 +99,21 @@ A list of available resources is available on the [EVE Swagger Interface browser
 
 This version of the resource replaces the resource originally initialized. If the requested base version does not have the specified resource, it will be added.
 
-Note that only one old revision of each resource is kept available through the legacy route. Keep an eye on the [deployment timeline](https://github.com/ccpgames/esi-issues/projects/2/) for resource updates. 
+Note that only one old revision of each resource is kept available through the legacy route. Keep an eye on the [deployment timeline](https://github.com/ccpgames/esi-issues/projects/2/) for resource updates.
+
+### Using a Local Spec File
+
+Specifying resource versions introduces one major problem for shared code: not all resources nor all their operations are available on any given version. This can be addressed by shipping a copy of the [versioned latest spec](https://esi.tech.ccp.is/_latest/swagger.json) with your app. **This is the preferred method for deployment.**
+
+To build a client using this local spec, pass an additional kwarg `spec_file` which contains the path to your local swagger.json:
+
+    c = esi_client_factory(spec_file='/path/to/swagger.json')
+
+For example, a swagger.json in the current file's directory would look like:
+
+    c = esi_client_factory(spec_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'swagger.json'))
+
+If a `spec_file` is specified all other versioning is unavailable: ensure you ship a spec with resource versions your app can handle.
 
 ### Accessing Alternate Datasources
  

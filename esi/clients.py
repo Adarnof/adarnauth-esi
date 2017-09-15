@@ -6,6 +6,7 @@ from bravado_core.spec import Spec
 from esi import app_settings
 from esi.errors import TokenExpiredError
 from django.core.cache import cache
+import json
 
 try:
     import urlparse
@@ -103,22 +104,41 @@ def build_spec(base_version, http_client=None, **kwargs):
     return base_spec
 
 
-def esi_client_factory(token=None, datasource=None, version=None, **kwargs):
+def read_spec(path, http_client=None):
+    """
+    Reads in a swagger spec file used to initialize a SwaggerClient
+    :param path: String path to local swagger spec file.
+    :param http_client: :class:`bravado.requests_client.RequestsClient`
+    :return: :class:`bravado_core.spec.Spec`
+    """
+    with open(path, 'r') as f:
+        spec_dict = json.loads(f.read())
+
+    return SwaggerClient.from_spec(spec_dict, http_client=http_client)
+
+
+def esi_client_factory(token=None, datasource=None, spec_file=None, version=None, **kwargs):
     """
     Generates an ESI client.
     :param token: :class:`esi.Token` used to access authenticated endpoints.
     :param datasource: Name of the ESI datasource to access.
-    :param version: Base ESI API version. Accepted values are 'legacy', 'latest', 'dev', or 'vX' where X is a number
+    :param spec_file: Absolute path to a swagger spec file to load.
+    :param version: Base ESI API version. Accepted values are 'legacy', 'latest', 'dev', or 'vX' where X is a number.
     :param kwargs: Explicit resource versions to build, in the form Character='v4'. Same values accepted as version.
     :return: :class:`bravado.client.SwaggerClient`
+
+    If a spec_file is specified, specific versioning is not available. Meaning the version and resource version kwargs
+    are ignored in favour of the versions available in the spec_file.
     """
+
+    requests_client = RequestsClient()
     if token or datasource:
-        requests_client = RequestsClient()
         requests_client.authenticator = TokenAuthenticator(token=token, datasource=datasource)
-    else:
-        requests_client = None
 
     api_version = version or app_settings.ESI_API_VERSION
 
-    spec = build_spec(api_version, http_client=requests_client, **kwargs)
-    return SwaggerClient(spec)
+    if spec_file:
+        return read_spec(spec_file, http_client=requests_client)
+    else:
+        spec = build_spec(api_version, http_client=requests_client, **kwargs)
+        return SwaggerClient(spec)

@@ -9,7 +9,7 @@ from esi.clients import esi_client_factory
 import datetime
 from requests_oauthlib import OAuth2Session
 from esi.managers import TokenManager
-from esi.errors import TokenInvalidError, NotRefreshableTokenError
+from esi.errors import TokenInvalidError, NotRefreshableTokenError, TokenExpiredError
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, MissingTokenError, InvalidClientError
 from django.core.exceptions import ImproperlyConfigured
 
@@ -24,7 +24,10 @@ class Scope(models.Model):
 
     @property
     def friendly_name(self):
-        return self.name.split('.')[1]
+        try:
+            return self.name.split('.')[1]
+        except IndexError:
+            return self.name
 
     def __str__(self):
         return self.name
@@ -114,13 +117,32 @@ class Token(models.Model):
         else:
             raise NotRefreshableTokenError()
 
-    def get_esi_client(self, version=None, **kwargs):
+    def get_esi_client(self, **kwargs):
         """
         Creates an authenticated ESI client with this token.
-        :param version: ESI API version
+        :param kwargs: Extra spec versioning as per `esi.clients.esi_client_factory`
         :return: :class:`bravado.client.SwaggerClient`
         """
-        return esi_client_factory(token=self, version=version, **kwargs)
+        return esi_client_factory(token=self, **kwargs)
+
+    @classmethod
+    def get_token_data(cls, access_token):
+        session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, token={'access_token': access_token})
+        return session.request('get', app_settings.ESI_TOKEN_VERIFY_URL).json()
+
+    def update_token_data(self, commit=True):
+        if self.expired:
+            if self.can_refresh:
+                self.refresh()
+            else:
+                raise TokenExpiredError()
+        token_data = self.get_token_data(self.access_token)
+        self.character_id = token_data['CharacterID']
+        self.character_name = token_data['CharacterName']
+        self.character_owner_hash = token_data['CharacterOwnerHash']
+        self.token_type = token_data['TokenType']
+        if commit:
+            self.save()
 
 
 @python_2_unicode_compatible
