@@ -4,11 +4,10 @@ from bravado import requests_client
 from bravado.swagger_model import Loader
 from bravado.http_future import HttpFuture
 from bravado_core.spec import Spec
-from esi import app_settings
 from esi.errors import TokenExpiredError
+from esi import app_settings
 from django.core.cache import cache
 from datetime import datetime
-from esi.app_settings import ESI_CACHE_RESPONSE
 import json
 
 try:
@@ -17,32 +16,63 @@ except ImportError:  # py3
     from urllib import parse as urlparse
 
 
-def _build_cache_key(request):
-    return 'ESI.%s__%s' % (request.method, request.url)
-
-
 class CachingHttpFuture(HttpFuture):
+    """
+    Used to add caching to certain HTTP requests according to "Expires" header
+    """
     def __init__(self, *args, **kwargs):
         super(CachingHttpFuture, self).__init__(*args, **kwargs)
-        self.cache_key = _build_cache_key(self.future.request)
+        self.cache_key = self._build_cache_key(self.future.request)
+
+    @staticmethod
+    def _build_cache_key(request):
+        """
+        Generated the key name used to cache responses
+        :param request: request used to retrieve API response
+        :return: formatted cache name
+        """
+        return 'esi_%s__%s' % (request.method, request.url)
 
     @staticmethod
     def _time_to_expiry(expires):
-        expires_dt = datetime.strptime(expires, '%a, %d %b %Y %H:%M:%S %Z')
-        return expires_dt - datetime.utcnow()
+        """
+        Determines the seconds until a HTTP header "Expires" timestamp
+        :param expires: HTTP response "Expires" header
+        :return: seconds until "Expires" time
+        """
+        try:
+            expires_dt = datetime.strptime(str(expires), '%a, %d %b %Y %H:%M:%S %Z')
+            delta = expires_dt - datetime.utcnow()
+            return delta.seconds
+        except ValueError:
+            return 0
 
     def result(self, **kwargs):
-        if ESI_CACHE_RESPONSE and self.future.request.method == 'GET':
-            cached_result = cache.get(self.cache_key)
-            if not cached_result:
+        if app_settings.ESI_CACHE_RESPONSE and self.future.request.method == 'GET' and self.operation is not None:
+            """
+            Only cache if all are true:
+             - settings dictate caching
+             - it's a http get request
+             - it's to a swagger api endpoint
+            """
+            cached = cache.get(self.cache_key)
+            if cached:
+                result, response = cached
+            else:
                 _also_return_response = self.also_return_response  # preserve original value
                 self.also_return_response = True  # override to always get the raw response for expiry header
-                cached_result, response = super(CachingHttpFuture, self).result(**kwargs)
+                result, response = super(CachingHttpFuture, self).result(**kwargs)
                 self.also_return_response = _also_return_response  # restore original value
-                expires = self._time_to_expiry(response.headers['Expires'])
-                if expires.seconds > 0:
-                    cache.set(self.cache_key, cached_result, expires.seconds)
-            return cached_result
+
+                if 'Expires' in response.headers:
+                    expires = self._time_to_expiry(response.headers['Expires'])
+                    if expires > 0:
+                        cache.set(self.cache_key, (result, response), expires)
+
+            if self.also_return_response:
+                return result, response
+            else:
+                return result
         else:
             return super(CachingHttpFuture, self).result(**kwargs)
 
@@ -57,9 +87,10 @@ class TokenAuthenticator(requests_client.Authenticator):
     """
 
     def __init__(self, token=None, datasource=None):
+        host = urlparse.urlsplit(app_settings.ESI_API_URL).hostname
+        super(TokenAuthenticator, self).__init__(host)
         self.token = token
         self.datasource = datasource
-        self.host = urlparse.urlsplit(app_settings.ESI_API_URL).hostname
 
     def apply(self, request):
         if self.token and self.token.expired:
