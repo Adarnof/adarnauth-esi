@@ -12,6 +12,7 @@ from esi.managers import TokenManager
 from esi.errors import TokenInvalidError, NotRefreshableTokenError, TokenExpiredError
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, MissingTokenError, InvalidClientError
 from django.core.exceptions import ImproperlyConfigured
+import re
 
 
 @python_2_unicode_compatible
@@ -25,7 +26,7 @@ class Scope(models.Model):
     @property
     def friendly_name(self):
         try:
-            return self.name.split('.')[1]
+            return re.sub('_', ' ', self.name.split('.')[1]).strip()
         except IndexError:
             return self.name
 

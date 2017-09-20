@@ -21,10 +21,8 @@
                     <td class="text-center">{{ token.character_name }}</td>
                     <td class="text-center">
                         {% for scope in token.scopes.all %}
-                        <a class="nodecoration" href="#" data-toggle="tooltip" data-placement="top"
-                           title="{{ scope.help_text }}">
-                            {{ scope.friendly_name }}{% if not forloop.last %}, {% endif %}
-                        </a>
+                            <a class="nodecoration" data-toggle="tooltip" data-placement="top"
+                               title="{{ scope.help_text }}">{{ scope.friendly_name }}</a>{% if not forloop.last %}, {% endif %}
                         {% endfor %}
                     </td>
                     <td class="text-center">
