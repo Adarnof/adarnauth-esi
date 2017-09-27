@@ -8,6 +8,7 @@ from esi.errors import TokenExpiredError
 from esi import app_settings
 from django.core.cache import cache
 from datetime import datetime
+from hashlib import md5
 import json
 
 try:
@@ -31,7 +32,10 @@ class CachingHttpFuture(HttpFuture):
         :param request: request used to retrieve API response
         :return: formatted cache name
         """
-        return 'esi_%s__%s' % (request.method, request.url)
+        str_hash = md5(
+            (request.method + request.url + str(request.params) + str(request.data) + str(request.json)).encode(
+                'utf-8')).hexdigest()
+        return 'esi_%s' % str_hash
 
     @staticmethod
     def _time_to_expiry(expires):
