@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from django.shortcuts import redirect, get_object_or_404, render
 from django.utils.six import string_types
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from esi.models import CallbackRedirect, Token
 from esi import app_settings
 from esi.decorators import tokens_required
