@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 from django.conf import settings
 
-# These are required in your project's settings.
-ESI_SSO_CLIENT_ID = getattr(settings, 'ESI_SSO_CLIENT_ID')
-ESI_SSO_CLIENT_SECRET = getattr(settings, 'ESI_SSO_CLIENT_SECRET')
-ESI_SSO_CALLBACK_URL = getattr(settings, 'ESI_SSO_CALLBACK_URL')
+# These are required for SSO to function. Can be left blank if settings.DEBUG is set to True
+ESI_SSO_CLIENT_ID = getattr(settings, 'ESI_SSO_CLIENT_ID', None)
+ESI_SSO_CLIENT_SECRET = getattr(settings, 'ESI_SSO_CLIENT_SECRET', None)
+ESI_SSO_CALLBACK_URL = getattr(settings, 'ESI_SSO_CALLBACK_URL', None)
 
 # Change these to switch to Singularity
 ESI_API_DATASOURCE = getattr(settings, 'ESI_API_DATASOURCE', 'tranquility')
