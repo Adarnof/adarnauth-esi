@@ -9,7 +9,7 @@ Django app for accessing the EVE Swagger Interface.
 
 2. Include the esi urlconf in your project's urls:
 
-    `url(r'^sso/', include('esi.urls'), namespace='esi'),`
+    `url(r'^sso/', include('esi.urls', namespace='esi')),`
 
 3. Register an application with the [EVE Developers site](https://developers.eveonline.com/applications)
 
@@ -64,7 +64,7 @@ adarnauth-esi provides a convenience wrapper around the [bravado SwaggerClient](
 
 To get a SwaggerClient configured for ESI, call the factory:
 
-    from esi.client import esi_client_factory
+    from esi.clients import esi_client_factory
     client = esi_client_factory()
 
 ### Accessing Authenticated Endpoints
