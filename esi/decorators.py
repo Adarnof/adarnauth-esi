@@ -91,15 +91,16 @@ def token_required(scopes='', new=False):
                     except Token.DoesNotExist:
                         pass
 
-            # present the user with token choices
-            tokens = Token.objects.filter(user__pk=request.user.pk).require_scopes(scopes).require_valid()
-            if tokens.exists():
-                from esi.views import select_token
-                return select_token(request, scopes=scopes, new=new)
-            else:
-                # no tokens are available, so prompt the user to add one
-                from esi.views import sso_redirect
-                return sso_redirect(request, scopes=scopes)
+            if not new:
+                # present the user with token choices
+                tokens = Token.objects.filter(user__pk=request.user.pk).require_scopes(scopes).require_valid()
+                if tokens.exists():
+                    from esi.views import select_token
+                    return select_token(request, scopes=scopes, new=new)
+
+            # prompt the user to add a new token
+            from esi.views import sso_redirect
+            return sso_redirect(request, scopes=scopes)
 
         return _wrapped_view
 
