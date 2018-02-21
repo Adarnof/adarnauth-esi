@@ -10,7 +10,7 @@ import datetime
 from requests_oauthlib import OAuth2Session
 from esi.managers import TokenManager
 from esi.errors import TokenInvalidError, NotRefreshableTokenError, TokenExpiredError
-from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, MissingTokenError, InvalidClientError
+from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, MissingTokenError, InvalidClientError, InvalidTokenError
 from django.core.exceptions import ImproperlyConfigured
 import re
 
@@ -106,12 +106,12 @@ class Token(models.Model):
             if not auth:
                 auth = HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
             try:
-                self.access_token = \
-                    session.refresh_token(app_settings.ESI_TOKEN_URL, refresh_token=self.refresh_token, auth=auth)[
-                        'access_token']
+                token = session.refresh_token(app_settings.ESI_TOKEN_URL, refresh_token=self.refresh_token, auth=auth)
+                self.access_token = token['access_token']
+                self.refresh_token = token['refresh_token']
                 self.created = timezone.now()
                 self.save()
-            except (InvalidGrantError, MissingTokenError):
+            except (InvalidGrantError, MissingTokenError, InvalidTokenError):
                 raise TokenInvalidError()
             except InvalidClientError:
                 raise ImproperlyConfigured('Verify ESI_SSO_CLIENT_ID and ESI_SSO_CLIENT_SECRET settings.')
