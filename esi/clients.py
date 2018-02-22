@@ -17,6 +17,9 @@ except ImportError:  # py3
     from urllib import parse as urlparse
 
 
+SPEC_CONFIG = {'use_models': False}
+
+
 class CachingHttpFuture(HttpFuture):
     """
     Used to add caching to certain HTTP requests according to "Expires" header
@@ -162,10 +165,10 @@ def build_spec(base_version, http_client=None, **kwargs):
     :param kwargs: Explicit resource versions, by name (eg Character='v4')
     :return: :class:`bravado_core.spec.Spec`
     """
-    base_spec = get_spec(base_version, http_client=http_client)
+    base_spec = get_spec(base_version, http_client=http_client, config=SPEC_CONFIG)
     if kwargs:
         for resource, resource_version in kwargs.items():
-            versioned_spec = get_spec(resource_version, http_client=http_client)
+            versioned_spec = get_spec(resource_version, http_client=http_client, config=SPEC_CONFIG)
             try:
                 spec_resource = versioned_spec.resources[resource.capitalize()]
             except KeyError:
@@ -185,7 +188,7 @@ def read_spec(path, http_client=None):
     with open(path, 'r') as f:
         spec_dict = json.loads(f.read())
 
-    return SwaggerClient.from_spec(spec_dict, http_client=http_client)
+    return SwaggerClient.from_spec(spec_dict, http_client=http_client, config=SPEC_CONFIG)
 
 
 def esi_client_factory(token=None, datasource=None, spec_file=None, version=None, **kwargs):
