@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from functools import wraps
 from django.utils.decorators import available_attrs
-from esi.models import Token, CallbackRedirect
+from esi.models import Token
 
 
 def _check_callback(request):
@@ -11,11 +11,8 @@ def _check_callback(request):
 
     # clean up callback redirect, pass token if new requested
     try:
-        model = CallbackRedirect.objects.get(session_key=request.session.session_key)
-        token = Token.objects.get(pk=model.token.pk)
-        model.delete()
-        return token
-    except (CallbackRedirect.DoesNotExist, Token.DoesNotExist, AttributeError):
+        return request.session.pop('_esi_token')
+    except (KeyError, AttributeError):
         return None
 
 

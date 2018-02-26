@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 from bravado.client import SwaggerClient as BaseClient, CONFIG_DEFAULTS, inject_headers_for_remote_refs
 from bravado import requests_client
 from bravado.http_future import HttpFuture
-from esi.errors import TokenExpiredError
 from esi import app_settings
 from django.core.cache import cache
 from datetime import datetime
@@ -96,13 +95,6 @@ class TokenAuthenticator(requests_client.Authenticator):
         self.token = token
 
     def apply(self, request):
-        # ensure token is still valid
-        if self.token and self.token.expired:
-            if self.token.can_refresh:
-                self.token.refresh()
-            else:
-                raise TokenExpiredError()
-
         # inject header containing OAuth token
         request.headers['Authorization'] = 'Bearer ' + self.token.access_token
         return request

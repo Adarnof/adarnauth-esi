@@ -1,0 +1,17 @@
+{% extends base_template %}
+{% load static %}
+{% load humanize_duration %}
+{% block content %}
+<div class="col-lg-6 col-lg-offset-3">
+    <div class="panel panel-danger">
+        <div class="panel-heading">Unknown Redirect</div>
+        <div class="panel-body">
+            <p class="text-center">The internal URL to redirect you to cannot be determined. This can occur if you take longer than {{ callback_timeout|format_seconds }} to authenticate, your browser is not accepting cookies, or you are being redirected across domains.</p>
+            <br>
+            <div class="text-center">
+                <a class="btn btn-default" href="/">Return to Site</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

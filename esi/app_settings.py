@@ -6,6 +6,9 @@ CLIENT_ID = getattr(settings, 'ESI_SSO_CLIENT_ID', None)
 CLIENT_SECRET = getattr(settings, 'ESI_SSO_CLIENT_SECRET', None)
 CALLBACK_URL = getattr(settings, 'ESI_SSO_CALLBACK_URL', None)
 
+# This determines how long a redirect is remembered
+CALLBACK_TIMEOUT = getattr(settings, 'ESI_CALLBACK_TIMEOUT', 300)
+
 # Change these to switch to Singularity
 API_DATASOURCE = getattr(settings, 'ESI_API_DATASOURCE', 'tranquility')
 OAUTH_URL = getattr(settings, 'ESI_SSO_BASE_URL', 'https://login.eveonline.com/oauth')

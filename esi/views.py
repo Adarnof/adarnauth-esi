@@ -1,13 +1,19 @@
 from __future__ import unicode_literals
 
-from django.shortcuts import redirect, get_object_or_404, render
+from django.shortcuts import redirect, render
 from django.utils.six import string_types
 from django.urls import reverse
-from esi.models import CallbackRedirect, Token
+from esi.models import Token
 from esi import app_settings
 from esi.decorators import tokens_required
 from django.http.response import HttpResponseBadRequest
 from requests_oauthlib import OAuth2Session
+from django.core.cache import cache
+from hashlib import md5
+
+
+def _cache_key_name(request, state):
+    return 'esi_redirect_{}'.format(md5(request.session.session_key + state).hexdigest())
 
 
 def sso_redirect(request, scopes=list([]), return_to=None):
@@ -18,9 +24,6 @@ def sso_redirect(request, scopes=list([]), return_to=None):
     """
     if isinstance(scopes, string_types):
         scopes = list([scopes])
-
-    # ensure only one callback redirect model per session
-    CallbackRedirect.objects.filter(session_key=request.session.session_key).delete()
 
     # ensure session installed in database
     if not request.session.exists(request.session.session_key):
@@ -34,7 +37,7 @@ def sso_redirect(request, scopes=list([]), return_to=None):
     oauth = OAuth2Session(app_settings.CLIENT_ID, redirect_uri=app_settings.CALLBACK_URL, scope=scopes)
     redirect_url, state = oauth.authorization_url(app_settings.OAUTH_LOGIN_URL)
 
-    CallbackRedirect.objects.create(session_key=request.session.session_key, state=state, url=url)
+    cache.set(_cache_key_name(request, state), url, app_settings.CALLBACK_TIMEOUT)
 
     return redirect(redirect_url)
 
@@ -52,11 +55,14 @@ def receive_callback(request):
     except AssertionError:
         return HttpResponseBadRequest()
 
-    callback = get_object_or_404(CallbackRedirect, state=state, session_key=request.session.session_key)
+    url = cache.get(_cache_key_name(request, state))
+
+    if not url:
+        return render(request, 'esi/callback_not_found.html')
+
     token = Token.objects.create_from_request(request)
-    callback.token = token
-    callback.save()
-    return redirect(callback.url)
+    request.session['_esi_token'] = token
+    return redirect(url)
 
 
 def select_token(request, scopes='', new=False):
