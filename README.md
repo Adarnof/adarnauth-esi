@@ -87,8 +87,8 @@ Endpoint results are returned as a dictionary.
  
 The SwaggerClient comes with a context manager for temporarily adding authentication:
 
-    with client.authenticate(my_token) as auth_client:
-        return auth_client.Resource.this_endpoint_requires_authorization().result()
+    with client.authenticate(my_token):
+        return client.Resource.this_endpoint_requires_authorization().result()
 
 This allows a single initialized SwaggerClient to authenticate with multiple tokens over its lifetime. 
 

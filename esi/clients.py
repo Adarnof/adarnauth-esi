@@ -119,6 +119,7 @@ class SwaggerClient(BaseClient):
             spec_dict = json.loads(f.read())
 
         # caching does not allow returning models, so ensure they're not used here
+        config = config or {}
         config = config.update({'use_models': False})
 
         return cls.from_spec(spec_dict, http_client=http_client, config=config)
@@ -129,8 +130,8 @@ class SwaggerClient(BaseClient):
         old_authenticator, self.swagger_spec.http_client.authenticator = \
             self.swagger_spec.http_client.authenticator, TokenAuthenticator(token)
 
-        # return the client for use
-        yield self
+        # let them use the authenticated client
+        yield
 
         # put the old authenticator back
         self.swagger_spec.http_client.authenticator = old_authenticator
