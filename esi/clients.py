@@ -52,7 +52,7 @@ class CachingHttpFuture(HttpFuture):
             return 0
 
     def result(self, **kwargs):
-        if app_settings.ESI_CACHE_RESPONSE and self.future.request.method == 'GET' and self.operation is not None:
+        if app_settings.CACHE_RESPONSE and self.future.request.method == 'GET' and self.operation is not None:
             """
             Only cache if all are true:
              - settings dictate caching
@@ -91,7 +91,7 @@ class TokenAuthenticator(requests_client.Authenticator):
     """
 
     def __init__(self, token):
-        host = urlparse.urlsplit(app_settings.ESI_API_URL).hostname
+        host = urlparse.urlsplit(app_settings.API_URL).hostname
         super(TokenAuthenticator, self).__init__(host)
         self.token = token
 

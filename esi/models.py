@@ -5,7 +5,6 @@ from esi import app_settings
 from django.conf import settings
 from requests.auth import HTTPBasicAuth
 from django.utils import timezone
-from esi.clients import esi_client_factory
 import datetime
 from requests_oauthlib import OAuth2Session
 from esi.managers import TokenManager
@@ -85,7 +84,7 @@ class Token(models.Model):
         """
         Determines when the token expires.
         """
-        return self.created + datetime.timedelta(seconds=app_settings.ESI_TOKEN_VALID_DURATION)
+        return self.created + datetime.timedelta(seconds=app_settings.TOKEN_VALID_DURATION)
 
     @property
     def expired(self):
@@ -102,11 +101,11 @@ class Token(models.Model):
         """
         if self.can_refresh:
             if not session:
-                session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID)
+                session = OAuth2Session(app_settings.CLIENT_ID)
             if not auth:
-                auth = HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
+                auth = HTTPBasicAuth(app_settings.CLIENT_ID, app_settings.CLIENT_SECRET)
             try:
-                token = session.refresh_token(app_settings.ESI_TOKEN_URL, refresh_token=self.refresh_token, auth=auth)
+                token = session.refresh_token(app_settings.TOKEN_URL, refresh_token=self.refresh_token, auth=auth)
                 self.access_token = token['access_token']
                 self.refresh_token = token['refresh_token']
                 self.created = timezone.now()
@@ -118,18 +117,10 @@ class Token(models.Model):
         else:
             raise NotRefreshableTokenError()
 
-    def get_esi_client(self, **kwargs):
-        """
-        Creates an authenticated ESI client with this token.
-        :param kwargs: Extra spec versioning as per `esi.clients.esi_client_factory`
-        :return: :class:`bravado.client.SwaggerClient`
-        """
-        return esi_client_factory(token=self, **kwargs)
-
     @classmethod
     def get_token_data(cls, access_token):
-        session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, token={'access_token': access_token})
-        return session.request('get', app_settings.ESI_TOKEN_VERIFY_URL).json()
+        session = OAuth2Session(app_settings.CLIENT_ID, token={'access_token': access_token})
+        return session.request('get', app_settings.TOKEN_VERIFY_URL).json()
 
     def update_token_data(self, commit=True):
         if self.expired:

@@ -26,7 +26,7 @@ class TokenQueryset(models.QuerySet):
         :return: All expired tokens.
         :rtype: :class:`esi.managers.TokenQueryset`
         """
-        max_age = timezone.now() - timedelta(seconds=app_settings.ESI_TOKEN_VALID_DURATION)
+        max_age = timezone.now() - timedelta(seconds=app_settings.TOKEN_VALID_DURATION)
         return self.filter(created__lte=max_age)
 
     def bulk_refresh(self):
@@ -35,8 +35,8 @@ class TokenQueryset(models.QuerySet):
         Deletes any tokens which fail to refresh.
         Deletes any tokens which are expired and cannot refresh.
         """
-        session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID)
-        auth = requests.auth.HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
+        session = OAuth2Session(app_settings.CLIENT_ID)
+        auth = requests.auth.HTTPBasicAuth(app_settings.CLIENT_ID, app_settings.CLIENT_SECRET)
         for model in self.filter(refresh_token__isnull=False):
             try:
                 model.refresh(session=session, auth=auth)
@@ -104,10 +104,10 @@ class TokenManager(models.Manager):
         """
 
         # perform code exchange
-        oauth = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, redirect_uri=app_settings.ESI_SSO_CALLBACK_URL)
-        token = oauth.fetch_token(app_settings.ESI_TOKEN_URL, client_secret=app_settings.ESI_SSO_CLIENT_SECRET,
+        oauth = OAuth2Session(app_settings.CLIENT_ID, redirect_uri=app_settings.CALLBACK_URL)
+        token = oauth.fetch_token(app_settings.TOKEN_URL, client_secret=app_settings.CLIENT_SECRET,
                                   code=code)
-        token_data = oauth.request('get', app_settings.ESI_TOKEN_VERIFY_URL).json()
+        token_data = oauth.request('get', app_settings.TOKEN_VERIFY_URL).json()
 
         # translate returned data to a model
         model = self.create(
@@ -137,7 +137,7 @@ class TokenManager(models.Manager):
                     scope = Scope.objects.create(name=s, help_text=help_text)
                     model.scopes.add(scope)
 
-        if not app_settings.ESI_ALWAYS_CREATE_TOKEN:
+        if not app_settings.ALWAYS_CREATE_TOKEN:
             # see if we already have a token for this character and scope combination
             # if so, we don't need a new one
             queryset = self.get_queryset().equivalent_to(model)

@@ -31,8 +31,8 @@ def sso_redirect(request, scopes=list([]), return_to=None):
     else:
         url = request.get_full_path()
 
-    oauth = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, redirect_uri=app_settings.ESI_SSO_CALLBACK_URL, scope=scopes)
-    redirect_url, state = oauth.authorization_url(app_settings.ESI_OAUTH_LOGIN_URL)
+    oauth = OAuth2Session(app_settings.CLIENT_ID, redirect_uri=app_settings.CALLBACK_URL, scope=scopes)
+    redirect_url, state = oauth.authorization_url(app_settings.OAUTH_LOGIN_URL)
 
     CallbackRedirect.objects.create(session_key=request.session.session_key, state=state, url=url)
 
@@ -68,7 +68,7 @@ def select_token(request, scopes='', new=False):
     def _token_list(r, tokens):
         context = {
             'tokens': tokens,
-            'base_template': app_settings.ESI_BASE_TEMPLATE,
+            'base_template': app_settings.BASE_TEMPLATE,
         }
         return render(r, 'esi/select_token.html', context=context)
 
