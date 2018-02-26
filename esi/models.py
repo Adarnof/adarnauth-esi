@@ -45,8 +45,6 @@ class Token(models.Model):
     Contains the access token required for ESI authentication as well as refreshing.
     """
 
-    created = models.DateTimeField(auto_now_add=True)
-
     refresh_token = models.CharField(max_length=254, blank=True, null=True,
                                      help_text="A re-usable token to generate new access tokens upon expiry.",
                                      editable=False)
@@ -82,20 +80,6 @@ class Token(models.Model):
         """
         return bool(self.refresh_token)
 
-    @property
-    def expires(self):
-        """
-        Determines when the token expires.
-        """
-        return self.created + datetime.timedelta(seconds=app_settings.TOKEN_VALID_DURATION)
-
-    @property
-    def expired(self):
-        """
-        Determines if the access token has expired.
-        """
-        return self.expires < timezone.now()
-
     def refresh(self, session=None, auth=None):
         """
         Refreshes the token.
@@ -126,11 +110,6 @@ class Token(models.Model):
         return session.request('get', app_settings.TOKEN_VERIFY_URL).json()
 
     def update_token_data(self, commit=True):
-        if self.expired:
-            if self.can_refresh:
-                self.refresh()
-            else:
-                raise TokenExpiredError()
         token_data = self.get_token_data(self.access_token)
         self.character_id = token_data['CharacterID']
         self.character_name = token_data['CharacterName']

@@ -20,6 +20,10 @@ class Migration(migrations.Migration):
             model_name='token',
             name='access_token',
         ),
+        migrations.RemoveField(
+            model_name='token',
+            name='created',
+        ),
         migrations.DeleteModel(
             name='CallbackRedirect',
         ),
