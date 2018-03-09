@@ -13,6 +13,10 @@ from esi.errors import TokenInvalidError, NotRefreshableTokenError, TokenExpired
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, MissingTokenError, InvalidClientError, InvalidTokenError
 from django.core.exceptions import ImproperlyConfigured
 import re
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible
@@ -100,6 +104,7 @@ class Token(models.Model):
         :param session: :class:`requests_oauthlib.OAuth2Session` for refreshing token with.
         :param auth: :class:`requests.auth.HTTPBasicAuth`
         """
+        logger.debug("Attempting refresh of {0}".format(repr(self)))
         if self.can_refresh:
             if not session:
                 session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID)
@@ -107,15 +112,20 @@ class Token(models.Model):
                 auth = HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
             try:
                 token = session.refresh_token(app_settings.ESI_TOKEN_URL, refresh_token=self.refresh_token, auth=auth)
+                logger.debug("Retrieved new token from SSO servers.")
                 self.access_token = token['access_token']
                 self.refresh_token = token['refresh_token']
                 self.created = timezone.now()
                 self.save()
-            except (InvalidGrantError, MissingTokenError, InvalidTokenError):
+                logger.debug("Successfully refreshed {0}".format(repr(self)))
+            except (InvalidGrantError, MissingTokenError, InvalidTokenError) as e:
+                logger.info("Refresh failed for {0}: {1}".format(repr(self), e))
                 raise TokenInvalidError()
             except InvalidClientError:
+                logger.debug("ESI client ID and secret invalid. Cannot refresh.")
                 raise ImproperlyConfigured('Verify ESI_SSO_CLIENT_ID and ESI_SSO_CLIENT_SECRET settings.')
         else:
+            logger.debug("Not a refreshable token.")
             raise NotRefreshableTokenError()
 
     def get_esi_client(self, **kwargs):
@@ -132,16 +142,19 @@ class Token(models.Model):
         return session.request('get', app_settings.ESI_TOKEN_VERIFY_URL).json()
 
     def update_token_data(self, commit=True):
+        logger.debug("Updating token data for {0}".format(repr(self)))
         if self.expired:
             if self.can_refresh:
                 self.refresh()
             else:
                 raise TokenExpiredError()
         token_data = self.get_token_data(self.access_token)
+        logger.debug(token_data)
         self.character_id = token_data['CharacterID']
         self.character_name = token_data['CharacterName']
         self.character_owner_hash = token_data['CharacterOwnerHash']
         self.token_type = token_data['TokenType']
+        logger.debug("Successfully updated token data.")
         if commit:
             self.save()
 
