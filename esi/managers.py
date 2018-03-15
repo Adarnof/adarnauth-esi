@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from django.db import models
 from requests_oauthlib import OAuth2Session
 from esi import app_settings
-import requests
+from requests.auth import HTTPBasicAuth
 from django.utils.six import string_types
 from .errors import TokenError
 
@@ -25,7 +25,7 @@ class TokenQueryset(models.QuerySet):
         Deletes any tokens which are expired and cannot refresh.
         """
         session = OAuth2Session(app_settings.CLIENT_ID)
-        auth = requests.auth.HTTPBasicAuth(app_settings.CLIENT_ID, app_settings.CLIENT_SECRET)
+        auth = HTTPBasicAuth(app_settings.CLIENT_ID, app_settings.CLIENT_SECRET)
         for model in self.filter(refresh_token__isnull=False):
             try:
                 model.refresh(session=session, auth=auth)
