@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 
 @admin.register(Scope)
 class ScopeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'help_text')
+    list_display = ('name', 'description')
 
 
 @admin.register(Token)

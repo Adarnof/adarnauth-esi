@@ -22,7 +22,7 @@
                     <td class="text-center">
                         {% for scope in token.scopes.all %}
                             <a class="nodecoration" data-toggle="tooltip" data-placement="top"
-                               title="{{ scope.help_text }}">{{ scope.friendly_name }}</a>{% if not forloop.last %}, {% endif %}
+                               title="{{ scope.description }}">{{ scope.friendly_name }}</a>{% if not forloop.last %}, {% endif %}
                         {% endfor %}
                     </td>
                     <td class="text-center">

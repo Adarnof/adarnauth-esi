@@ -21,6 +21,7 @@ class TokenQueryset(models.QuerySet):
     def bulk_refresh(self):
         """
         Refreshes all refreshable tokens in the queryset.
+
         Deletes any tokens which fail to refresh.
         Deletes any tokens which are expired and cannot refresh.
         """
@@ -59,6 +60,7 @@ class TokenQueryset(models.QuerySet):
     def equivalent_to(self, token):
         """
         Gets all tokens which match the character and scopes of a reference token
+
         :param token: :class:`esi.models.Token`
         :return: :class:`esi.managers.TokenQueryset`
         """
@@ -76,6 +78,7 @@ class TokenManager(models.Manager):
     def create_from_code(self, code, user=None):
         """
         Perform OAuth code exchange to retrieve a token.
+
         :param code: OAuth grant code.
         :param user: User who will own token.
         :return: :class:`esi.models.Token`
@@ -134,6 +137,7 @@ class TokenManager(models.Manager):
     def create_from_request(self, request):
         """
         Generate a token from the OAuth callback request. Must contain 'code' in GET.
+        
         :param request: OAuth callback request.
         :return: :class:`esi.models.Token`
         """
