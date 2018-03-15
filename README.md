@@ -23,10 +23,12 @@ Django app for accessing the EVE Swagger Interface.
 
     ESI_SSO_CLIENT_ID = "my client id"    
     ESI_SSO_CLIENT_SECRET = "my client secret"
-    ESI_SSO_CALLBACK_URL = "https://example.com/sso/callback"
+    ESI_SSO_CALLBACK_URL = "https://example.com/sso/callback/"
     
 
 5. Run `python manage.py migrate` to create models.
+
+6. Run `python manage.py loaddata esi` to populate scopes.
 
 ## Usage in Views
 
@@ -93,3 +95,12 @@ The SwaggerClient comes with a context manager for temporarily adding authentica
 This allows a single initialized SwaggerClient to authenticate with multiple tokens over its lifetime. 
 
 Authenticated clients will auto-renew tokens when needed, or raise a `TokenExpiredError` if they aren't renewable.
+
+### Accessing Singularity
+
+To access the test server a few settings need to be altered:
+
+    ESI_API_DATASOURCE = 'singularity'
+    ESI_OAUTH_URL = 'https://sisilogin.testeveonline.com/oauth/'
+
+Tokens created while on singularity will not be available if the datasource is switched to tranquiliy, and vice-versa.

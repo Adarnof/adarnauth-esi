@@ -2,17 +2,13 @@ from __future__ import unicode_literals
 from bravado.client import SwaggerClient as BaseClient, CONFIG_DEFAULTS, inject_headers_for_remote_refs
 from bravado import requests_client
 from bravado.http_future import HttpFuture
-from esi import app_settings
+from . import app_settings
 from django.core.cache import cache
 from datetime import datetime
 from hashlib import md5
 import json
 from contextlib import contextmanager
-
-try:
-    import urlparse
-except ImportError:  # py3
-    from urllib import parse as urlparse
+from urllib import parse as urlparse
 
 
 class CachingHttpFuture(HttpFuture):
@@ -80,24 +76,62 @@ class CachingHttpFuture(HttpFuture):
             return super(CachingHttpFuture, self).result(**kwargs)
 
 
+# caching can't pickle model classes, so always return dict
+CONFIG_DEFAULTS['use_models'] = False
+
+
+# ensure clients employ caching
 requests_client.HttpFuture = CachingHttpFuture
 
 
-class TokenAuthenticator(requests_client.Authenticator):
+class ESIHostAuthenticator(requests_client.Authenticator):
     """
-    Adds the authorization header containing access token, if specified.
-    Sets ESI datasource to tranquility or singularity.
+    Matches requests to ESI host.
     """
-
-    def __init__(self, token):
+    def __init__(self):
         host = urlparse.urlsplit(app_settings.API_URL).hostname
-        super(TokenAuthenticator, self).__init__(host)
+        super().__init__(host)
+
+    def apply(self, request):
+        return request
+
+
+class DatasourceAuthenticator(ESIHostAuthenticator):
+    """
+    Adds the datasource query parameter.
+    """
+    def __init__(self, datasource=app_settings.API_DATASOURCE):
+        super().__init__()
+        self.datasource = datasource
+
+    def apply(self, request):
+        request.params['datasource'] = self.datasource
+        return request
+
+
+class TokenAuthenticator(DatasourceAuthenticator):
+    """
+    Adds the authorization header containing access token.
+    """
+    def __init__(self, token):
+        super().__init__()
         self.token = token
 
     def apply(self, request):
+        request = super().apply(request)
         # inject header containing OAuth token
         request.headers['Authorization'] = 'Bearer ' + self.token.access_token
         return request
+
+
+class RequestsClient(requests_client.RequestsClient):
+    def __init__(self):
+        super().__init__()
+        self.authenticator = DatasourceAuthenticator()
+
+
+# ensure clients default to datasource authenticator
+requests_client.RequestsClient = RequestsClient
 
 
 class SwaggerClient(BaseClient):
@@ -105,10 +139,9 @@ class SwaggerClient(BaseClient):
     Extends the bravado SwaggerClient to allow reading spec from file.
     Provides a contextmanager for authenticating clients temporarily.
     """
-
     @classmethod
     def from_file(cls, path, http_client=None, request_headers=None, config=None):
-        http_client = http_client or requests_client.RequestsClient()
+        http_client = http_client or RequestsClient()
 
         # SwaggerClient.from_url does this so I will too
         if request_headers:
@@ -118,15 +151,11 @@ class SwaggerClient(BaseClient):
         with open(path, 'r') as f:
             spec_dict = json.loads(f.read())
 
-        # caching does not allow returning models, so ensure they're not used here
-        config = config or {}
-        config = config.update({'use_models': False})
-
         return cls.from_spec(spec_dict, http_client=http_client, config=config)
 
     @contextmanager
     def authenticate(self, token):
-        # swap authenticator for TokenAuthenticator, but keep it
+        # swap authenticator for TokenAuthenticator
         old_authenticator, self.swagger_spec.http_client.authenticator = \
             self.swagger_spec.http_client.authenticator, TokenAuthenticator(token)
 
@@ -141,13 +170,9 @@ def minimize_spec(spec_dict, operations=None, resources=None):
     """
     Trims down a source spec dict to only the operations or resources indicated.
     :param spec_dict: The source spec dict to minimize.
-    :type spec_dict: dict
     :param operations: A list of operation names to retain.
-    :type operations: list of str
     :param resources: A list of resource names to retain.
-    :type resources: list of str
     :return: Minimized swagger spec dict
-    :rtype: dict
     """
     operations = operations or []
     resources = resources or []

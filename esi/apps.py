@@ -9,4 +9,4 @@ class EsiConfig(AppConfig):
 
     def ready(self):
         super(EsiConfig, self).ready()
-        from esi import checks
+        from . import checks

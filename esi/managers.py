@@ -3,10 +3,8 @@ from django.db import models
 from requests_oauthlib import OAuth2Session
 from esi import app_settings
 import requests
-from django.utils import timezone
-from datetime import timedelta
 from django.utils.six import string_types
-from esi.errors import TokenError
+from .errors import TokenError
 
 
 def _process_scopes(scopes):
@@ -20,15 +18,6 @@ def _process_scopes(scopes):
 
 
 class TokenQueryset(models.QuerySet):
-    def get_expired(self):
-        """
-        Get all tokens which have expired.
-        :return: All expired tokens.
-        :rtype: :class:`esi.managers.TokenQueryset`
-        """
-        max_age = timezone.now() - timedelta(seconds=app_settings.TOKEN_VALID_DURATION)
-        return self.filter(created__lte=max_age)
-
     def bulk_refresh(self):
         """
         Refreshes all refreshable tokens in the queryset.
@@ -43,16 +32,6 @@ class TokenQueryset(models.QuerySet):
             except TokenError:
                 model.delete()
         self.filter(refresh_token__isnull=True).get_expired().delete()
-
-    def require_valid(self):
-        """
-        Ensures all tokens are still valid. If expired, attempts to refresh.
-        Deletes those which fail to refresh or cannot be refreshed.
-        :return: All tokens which are still valid.
-        :rtype: :class:`esi.managers.TokenQueryset`
-        """
-        self.get_expired().bulk_refresh()
-        return self.filter(pk__isnull=False)
 
     def require_scopes(self, scope_string):
         """
@@ -91,9 +70,8 @@ class TokenManager(models.Manager):
     def get_queryset(self):
         """
         Replace base queryset model with custom TokenQueryset
-        :rtype: :class:`esi.managers.TokenQueryset`
         """
-        return TokenQueryset(self.model, using=self._db)
+        return TokenQueryset(self.model, using=self._db).filter(datasource=app_settings.API_DATASOURCE)
 
     def create_from_code(self, code, user=None):
         """
@@ -122,7 +100,7 @@ class TokenManager(models.Manager):
 
         # parse scopes
         if 'Scopes' in token_data:
-            from esi.models import Scope
+            from .models import Scope
             for s in token_data['Scopes'].split():
                 try:
                     scope = Scope.objects.get(name=s)

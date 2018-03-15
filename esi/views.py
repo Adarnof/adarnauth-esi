@@ -3,9 +3,9 @@ from __future__ import unicode_literals
 from django.shortcuts import redirect, render
 from django.utils.six import string_types
 from django.urls import reverse
-from esi.models import Token
+from .models import Token
 from esi import app_settings
-from esi.decorators import tokens_required
+from .decorators import tokens_required
 from django.http.response import HttpResponseBadRequest
 from requests_oauthlib import OAuth2Session
 from django.core.cache import cache
@@ -58,7 +58,7 @@ def receive_callback(request):
     url = cache.get(_cache_key_name(request, state))
 
     if not url:
-        return render(request, 'esi/callback_not_found.html')
+        return render(request, 'esi/callback_not_found.html', context={'base_template': app_settings.BASE_TEMPLATE})
 
     token = Token.objects.create_from_request(request)
     request.session['_esi_token'] = token

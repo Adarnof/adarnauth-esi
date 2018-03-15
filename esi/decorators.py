@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from functools import wraps
 from django.utils.decorators import available_attrs
-from esi.models import Token
+from .models import Token
 
 
 def _check_callback(request):
@@ -47,7 +47,7 @@ def tokens_required(scopes='', new=False):
                     return view_func(request, tokens, *args, **kwargs)
 
             # trigger creation of new token via sso
-            from esi.views import sso_redirect
+            from .views import sso_redirect
             return sso_redirect(request, scopes=scopes)
 
         return _wrapped_view
@@ -74,7 +74,7 @@ def token_required(scopes='', new=False):
             if request.method == 'POST':
                 if request.POST.get("_add", False):
                     # user has selected to add a new token
-                    from esi.views import sso_redirect
+                    from .views import sso_redirect
                     return sso_redirect(request, scopes=scopes)
 
                 token_pk = request.POST.get('_token', None)
@@ -92,11 +92,11 @@ def token_required(scopes='', new=False):
                 # present the user with token choices
                 tokens = Token.objects.filter(user__pk=request.user.pk).require_scopes(scopes).require_valid()
                 if tokens.exists():
-                    from esi.views import select_token
+                    from .views import select_token
                     return select_token(request, scopes=scopes, new=new)
 
             # prompt the user to add a new token
-            from esi.views import sso_redirect
+            from .views import sso_redirect
             return sso_redirect(request, scopes=scopes)
 
         return _wrapped_view

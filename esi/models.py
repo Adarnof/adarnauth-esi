@@ -1,14 +1,11 @@
-from __future__ import unicode_literals
-from django.utils.encoding import python_2_unicode_compatible
 from django.db import models
 from esi import app_settings
 from django.conf import settings
 from requests.auth import HTTPBasicAuth
 from django.utils import timezone
-import datetime
 from requests_oauthlib import OAuth2Session
-from esi.managers import TokenManager
-from esi.errors import TokenInvalidError, NotRefreshableTokenError, TokenExpiredError
+from .managers import TokenManager
+from .errors import TokenInvalidError, NotRefreshableTokenError, TokenExpiredError
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, MissingTokenError, InvalidClientError, InvalidTokenError
 from django.core.exceptions import ImproperlyConfigured
 import re
@@ -17,12 +14,11 @@ from hashlib import md5
 from .app_settings import TOKEN_VALID_DURATION
 
 
-@python_2_unicode_compatible
 class Scope(models.Model):
     """
     Represents an access scope granted by SSO.
     """
-    name = models.CharField(max_length=100, unique=True, help_text="The official EVE name for the scope.")
+    name = models.CharField(max_length=100, unique=True, help_text="The official EVE name for the scope.", db_index=True)
     help_text = models.TextField(help_text="The official EVE description of the scope.")
 
     @property
@@ -30,14 +26,17 @@ class Scope(models.Model):
         try:
             return re.sub('_', ' ', self.name.split('.')[1]).strip()
         except IndexError:
-            out = re.sub(r'([A-Z])', r' \1', self.name)
+            out = re.sub(r'([A-Z])', r' \1', str(self.name))
             return out.capitalize()
 
     def __str__(self):
         return self.name
 
 
-@python_2_unicode_compatible
+def get_current_datasource():
+    return app_settings.API_DATASOURCE
+
+
 class Token(models.Model):
     """
     EVE Swagger Interface Access Token
@@ -50,7 +49,7 @@ class Token(models.Model):
                                      editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, blank=True, null=True,
                              help_text="The user to whom this token belongs.")
-    character_id = models.IntegerField(help_text="The ID of the EVE character who authenticated by SSO.")
+    character_id = models.IntegerField(help_text="The ID of the EVE character who authenticated by SSO.", db_index=True)
     character_name = models.CharField(max_length=100,
                                       help_text="The name of the EVE character who authenticated by SSO.")
     token_type = models.CharField(max_length=100, choices=(('Character', 'Character'), ('Corporation', 'Corporation'),),
@@ -59,6 +58,7 @@ class Token(models.Model):
                                             help_text="The unique string identifying this character and its owning EVE "
                                                       "account. Changes if the owning account changes.")
     scopes = models.ManyToManyField(Scope, blank=True, help_text="The access scopes granted by this token.")
+    datasource = models.CharField(max_length=11, default=get_current_datasource, editable=False, db_index=True)
 
     objects = TokenManager()
 

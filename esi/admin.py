@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from django.contrib import admin
-from esi.models import Token, Scope
+from .models import Token, Scope
 from django.contrib.auth import get_user_model
 
 
@@ -16,6 +16,7 @@ class TokenAdmin(admin.ModelAdmin):
 
     get_scopes.short_description = 'Scopes'
 
-    User = get_user_model()
     list_display = ('user', 'character_name', 'get_scopes')
+
+    User = get_user_model()
     search_fields = ['user__%s' % User.USERNAME_FIELD, 'character_name', 'scopes__name']
