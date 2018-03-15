@@ -5,6 +5,8 @@ from esi import app_settings
 from requests.auth import HTTPBasicAuth
 from django.utils.six import string_types
 from .errors import TokenError
+from datetime import timedelta
+from django.utils import timezone
 
 
 def _process_scopes(scopes):
@@ -14,10 +16,19 @@ def _process_scopes(scopes):
     # support space-delimited string scopes or lists
     if isinstance(scopes, string_types):
         scopes = scopes.split()
-    return scopes
+    return set(scopes)
 
 
 class TokenQueryset(models.QuerySet):
+    def get_expired(self):
+        """
+        Get all tokens which have expired.
+
+        :return: All expired tokens.
+        """
+        max_age = timezone.now() - timedelta(seconds=app_settings.TOKEN_VALID_DURATION)
+        return self.filter(updated__lte=max_age)
+
     def bulk_refresh(self):
         """
         Refreshes all refreshable tokens in the queryset.
@@ -38,24 +49,15 @@ class TokenQueryset(models.QuerySet):
         """
         :param scope_string: The required scopes.
         :type scope_string: Union[str, list]
-        :return: The tokens with all requested scopes.
-        :rtype: :class:`esi.managers.TokenQueryset`
-        """
-        scopes = _process_scopes(scope_string)
-        for s in scopes:
-            self = self.filter(scopes__name=str(s))
-        return self
-
-    def require_scopes_exact(self, scope_string):
-        """
-        :param scope_string: The required scopes.
-        :type scope_string: Union[str, list]
         :return: The tokens with only the requested scopes.
         :rtype: :class:`esi.managers.TokenQueryset`
         """
-        num_scopes = len(_process_scopes(scope_string))
-        return self.annotate(models.Count('scopes')).require_scopes(scope_string).filter(
-            scopes__count=num_scopes)
+        scopes = _process_scopes(scope_string)
+        num_scopes = len(scopes)
+        tokens = self.annotate(models.Count('scopes').filter(scopes__count=num_scopes))
+        for s in scopes:
+            tokens = tokens.filter(scopes__name=s)
+        return tokens
 
     def equivalent_to(self, token):
         """
@@ -137,7 +139,7 @@ class TokenManager(models.Manager):
     def create_from_request(self, request):
         """
         Generate a token from the OAuth callback request. Must contain 'code' in GET.
-        
+
         :param request: OAuth callback request.
         :return: :class:`esi.models.Token`
         """
