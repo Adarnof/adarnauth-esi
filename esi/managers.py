@@ -112,7 +112,9 @@ class TokenManager(models.Manager):
         oauth = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, redirect_uri=app_settings.ESI_SSO_CALLBACK_URL)
         token = oauth.fetch_token(app_settings.ESI_TOKEN_URL, client_secret=app_settings.ESI_SSO_CLIENT_SECRET,
                                   code=code)
-        token_data = oauth.request('get', app_settings.ESI_TOKEN_VERIFY_URL).json()
+        r = oauth.request('get', app_settings.ESI_TOKEN_VERIFY_URL)
+        r.raise_for_status()
+        token_data = r.json()
         logger.debug(token_data)
 
         # translate returned data to a model
