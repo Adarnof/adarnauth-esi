@@ -15,3 +15,7 @@ class TokenExpiredError(TokenError):
 
 class NotRefreshableTokenError(TokenError):
     pass
+
+
+class IncompleteResponseError(Exception):
+    pass

@@ -6,7 +6,7 @@ import requests
 from django.utils import timezone
 from datetime import timedelta
 from django.utils.six import string_types
-from esi.errors import TokenError
+from esi.errors import TokenError, IncompleteResponseError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,9 +37,11 @@ class TokenQueryset(models.QuerySet):
         Refreshes all refreshable tokens in the queryset.
         Deletes any tokens which fail to refresh.
         Deletes any tokens which are expired and cannot refresh.
+        Excludes tokens for which the refresh was incomplete for other reasons.
         """
         session = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID)
         auth = requests.auth.HTTPBasicAuth(app_settings.ESI_SSO_CLIENT_ID, app_settings.ESI_SSO_CLIENT_SECRET)
+        incomplete = []
         for model in self.filter(refresh_token__isnull=False):
             try:
                 model.refresh(session=session, auth=auth)
@@ -47,7 +49,10 @@ class TokenQueryset(models.QuerySet):
             except TokenError:
                 logger.info("Refresh failed for {0}. Deleting.".format(repr(model)))
                 model.delete()
+            except IncompleteResponseError:
+                incomplete.append(model.pk)
         self.filter(refresh_token__isnull=True).get_expired().delete()
+        return self.exclude(pk__in=incomplete)
 
     def require_valid(self):
         """
@@ -56,8 +61,8 @@ class TokenQueryset(models.QuerySet):
         :return: All tokens which are still valid.
         :rtype: :class:`esi.managers.TokenQueryset`
         """
-        self.get_expired().bulk_refresh()
-        return self.filter(pk__isnull=False)
+        valid = self.get_expired().bulk_refresh()
+        return valid.filter(pk__isnull=False)
 
     def require_scopes(self, scope_string):
         """
@@ -107,6 +112,7 @@ class TokenManager(models.Manager):
         :param user: User who will own token.
         :return: :class:`esi.models.Token`
         """
+
         # perform code exchange
         logger.debug("Creating new token from code {0}".format(code[:-5]))
         oauth = OAuth2Session(app_settings.ESI_SSO_CLIENT_ID, redirect_uri=app_settings.ESI_SSO_CALLBACK_URL)
@@ -173,7 +179,7 @@ class TokenManager(models.Manager):
         :param request: OAuth callback request.
         :return: :class:`esi.models.Token`
         """
-        logger.debug("Creating new token for {0} session {1}".format(request.user, _protected_session(request)))
+        logger.debug("Creating new token for {0} session {1}".format(request.user, request.session.session_key[:5]))
         code = request.GET.get('code')
         # attach a user during creation for some functionality in a post_save created receiver I'm working on elsewhere
         model = self.create_from_code(code, user=request.user if request.user.is_authenticated else None)
