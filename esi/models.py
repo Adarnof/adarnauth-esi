@@ -10,7 +10,7 @@ import datetime
 from requests_oauthlib import OAuth2Session
 from esi.managers import TokenManager
 from esi.errors import TokenInvalidError, NotRefreshableTokenError, TokenExpiredError, IncompleteResponseError
-from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, MissingTokenError, InvalidClientError, InvalidTokenError
+from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, MissingTokenError, InvalidClientError, InvalidTokenError, InvalidClientIdError
 from django.core.exceptions import ImproperlyConfigured
 import re
 import logging
@@ -118,7 +118,7 @@ class Token(models.Model):
                 self.created = timezone.now()
                 self.save()
                 logger.debug("Successfully refreshed {0}".format(repr(self)))
-            except (InvalidGrantError, InvalidTokenError) as e:
+            except (InvalidGrantError, InvalidTokenError, InvalidClientIdError) as e:
                 logger.info("Refresh failed for {0}: {1}".format(repr(self), e))
                 raise TokenInvalidError()
             except MissingTokenError as e:

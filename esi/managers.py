@@ -61,8 +61,10 @@ class TokenQueryset(models.QuerySet):
         :return: All tokens which are still valid.
         :rtype: :class:`esi.managers.TokenQueryset`
         """
-        valid = self.get_expired().bulk_refresh()
-        return valid.filter(pk__isnull=False)
+        expired = self.get_expired()
+        valid = self.exclude(pk__in=expired)
+        valid_expired = expired.bulk_refresh()
+        return valid_expired | valid
 
     def require_scopes(self, scope_string):
         """
