@@ -16,10 +16,13 @@ def _process_scopes(scopes):
     if scopes is None:
         # support filtering by no scopes with None passed
         return ''
+    if len(scopes) == 1:
+        # support a single space-delimited string inside a list because :users:
+        scopes = scopes[0]
     # support space-delimited string scopes or lists
     if isinstance(scopes, string_types):
         scopes = scopes.split()
-    return scopes
+    return set(scopes)
 
 
 class TokenQueryset(models.QuerySet):
@@ -74,9 +77,12 @@ class TokenQueryset(models.QuerySet):
         :rtype: :class:`esi.managers.TokenQueryset`
         """
         scopes = _process_scopes(scope_string)
-        for s in scopes:
-            self = self.filter(scopes__name=str(s))
-        return self
+        from .models import Scope
+        scope_pks = Scope.objects.filter(name__in=scopes).values_list('pk', flat=True)
+        tokens = self.all()
+        for pk in scope_pks:
+            tokens = tokens.filter(scopes__pk=pk)
+        return tokens
 
     def require_scopes_exact(self, scope_string):
         """
