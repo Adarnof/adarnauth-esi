@@ -16,13 +16,13 @@ def _process_scopes(scopes):
     if scopes is None:
         # support filtering by no scopes with None passed
         return ''
-    if len(scopes) == 1:
+    if not isinstance(scopes, models.QuerySet) and len(scopes) == 1:
         # support a single space-delimited string inside a list because :users:
         scopes = scopes[0]
     # support space-delimited string scopes or lists
     if isinstance(scopes, string_types):
-        scopes = scopes.split()
-    return set(scopes)
+        scopes = set(scopes.split())
+    return scopes
 
 
 class TokenQueryset(models.QuerySet):
