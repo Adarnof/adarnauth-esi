@@ -92,8 +92,9 @@ class TokenQueryset(models.QuerySet):
         :rtype: :class:`esi.managers.TokenQueryset`
         """
         num_scopes = len(_process_scopes(scope_string))
-        return self.annotate(models.Count('scopes')).require_scopes(scope_string).filter(
-            scopes__count=num_scopes)
+        pks = [v['pk'] for v in self.annotate(models.Count('scopes')).require_scopes(scope_string).filter(
+            scopes__count=num_scopes).values('pk', 'scopes__id')]
+        return self.filter(pk__in=pks)
 
     def equivalent_to(self, token):
         """
