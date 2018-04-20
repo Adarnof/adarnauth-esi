@@ -22,7 +22,7 @@ def _process_scopes(scopes):
     # support space-delimited string scopes or lists
     if isinstance(scopes, string_types):
         scopes = set(scopes.split())
-    return scopes
+    return list(str(s) for s in scopes)
 
 
 class TokenQueryset(models.QuerySet):
