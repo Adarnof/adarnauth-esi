@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from bravado.client import SwaggerClient, CONFIG_DEFAULTS
-from bravado import requests_client
+from bravado import requests_client, fido_client
 from bravado.swagger_model import Loader
 from bravado.http_future import HttpFuture
 from bravado_core.spec import Spec
@@ -85,6 +85,7 @@ class CachingHttpFuture(HttpFuture):
 
 
 requests_client.HttpFuture = CachingHttpFuture
+#fido_client.HttpFuture = CachingHttpFuture
 
 
 class TokenAuthenticator(requests_client.Authenticator):
@@ -191,11 +192,12 @@ def read_spec(path, http_client=None):
     return SwaggerClient.from_spec(spec_dict, http_client=http_client, config=SPEC_CONFIG)
 
 
-def esi_client_factory(token=None, datasource=None, spec_file=None, version=None, **kwargs):
+def esi_client_factory(token=None, datasource=None, fido=False, spec_file=None, version=None, **kwargs):
     """
     Generates an ESI client.
     :param token: :class:`esi.Token` used to access authenticated endpoints.
     :param datasource: Name of the ESI datasource to access.
+    :param fido: Use asynchronous fido HTTP client
     :param spec_file: Absolute path to a swagger spec file to load.
     :param version: Base ESI API version. Accepted values are 'legacy', 'latest', 'dev', or 'vX' where X is a number.
     :param kwargs: Explicit resource versions to build, in the form Character='v4'. Same values accepted as version.
@@ -205,7 +207,11 @@ def esi_client_factory(token=None, datasource=None, spec_file=None, version=None
     are ignored in favour of the versions available in the spec_file.
     """
 
-    client = requests_client.RequestsClient()
+    if fido:
+        client = fido_client.FidoClient()
+    else:
+        client = requests_client.RequestsClient()
+
     if token or datasource:
         client.authenticator = TokenAuthenticator(token=token, datasource=datasource)
 
