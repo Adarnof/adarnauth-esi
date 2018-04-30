@@ -47,9 +47,9 @@ class Token(models.Model):
     """
 
     created = models.DateTimeField(auto_now_add=True)
-    access_token = models.CharField(max_length=254, help_text="The access token granted by SSO.",
+    access_token = models.TextField(help_text="The access token granted by SSO.",
                                     editable=False)
-    refresh_token = models.CharField(max_length=254, blank=True, null=True,
+    refresh_token = models.TextField(blank=True, default='',
                                      help_text="A re-usable token to generate new access tokens upon expiry.",
                                      editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, blank=True, null=True,
