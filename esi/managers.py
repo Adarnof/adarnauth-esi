@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 def _process_scopes(scopes):
     if scopes is None:
         # support filtering by no scopes with None passed
-        return ''
+        scopes = []
     if not isinstance(scopes, models.QuerySet) and len(scopes) == 1:
         # support a single space-delimited string inside a list because :users:
         scopes = scopes[0]
     # support space-delimited string scopes or lists
     if isinstance(scopes, string_types):
         scopes = set(scopes.split())
-    return list(str(s) for s in scopes)
+    return set(str(s) for s in scopes)
 
 
 class TokenQueryset(models.QuerySet):
@@ -77,8 +77,14 @@ class TokenQueryset(models.QuerySet):
         :rtype: :class:`esi.managers.TokenQueryset`
         """
         scopes = _process_scopes(scope_string)
+        if not scopes:
+            # asking for tokens with no scopes
+            return self.filter(scopes__isnull=True)
         from .models import Scope
         scope_pks = Scope.objects.filter(name__in=scopes).values_list('pk', flat=True)
+        if not len(scopes) == len(scope_pks):
+            # there's a scope we don't recognize, so we can't have any tokens for it
+            return self.none()
         tokens = self.all()
         for pk in scope_pks:
             tokens = tokens.filter(scopes__pk=pk)
