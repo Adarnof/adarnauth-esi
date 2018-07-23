@@ -191,7 +191,7 @@ def read_spec(path, http_client=None):
     return SwaggerClient.from_spec(spec_dict, http_client=http_client, config=SPEC_CONFIG)
 
 
-def esi_client_factory(token=None, datasource=None, spec_file=None, version=None, **kwargs):
+def esi_client_factory(token=None, datasource=None, spec_file=None, version=None, also_return_response=False, **kwargs):
     """
     Generates an ESI client.
     :param token: :class:`esi.Token` used to access authenticated endpoints.
@@ -215,7 +215,7 @@ def esi_client_factory(token=None, datasource=None, spec_file=None, version=None
         return read_spec(spec_file, http_client=client)
     else:
         spec = build_spec(api_version, http_client=client, **kwargs)
-        return SwaggerClient(spec)
+        return SwaggerClient(spec, also_return_response)
 
 
 def minimize_spec(spec_dict, operations=None, resources=None):
