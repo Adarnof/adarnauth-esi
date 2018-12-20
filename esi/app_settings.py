@@ -23,7 +23,7 @@ ESI_ALWAYS_CREATE_TOKEN = getattr(settings, 'ESI_ALWAYS_CREATE_TOKEN', False)
 ESI_CACHE_RESPONSE = getattr(settings, 'ESI_CACHE_RESPONSE', True)
 
 # These probably won't ever change. Override if needed.
-ESI_API_URL = getattr(settings, 'ESI_API_URL', 'https://esi.tech.ccp.is/')
+ESI_API_URL = getattr(settings, 'ESI_API_URL', 'https://esi.evetech.net/')
 ESI_OAUTH_LOGIN_URL = getattr(settings, 'ESI_SSO_LOGIN_URL', ESI_OAUTH_URL + "/authorize/")
 ESI_TOKEN_URL = getattr(settings, 'ESI_CODE_EXCHANGE_URL', ESI_OAUTH_URL + "/token")
 ESI_TOKEN_VERIFY_URL = getattr(settings, 'ESI_TOKEN_EXCHANGE_URL', ESI_OAUTH_URL + "/verify")
